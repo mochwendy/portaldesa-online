@@ -1,0 +1,8 @@
+"nama","email","username","role","grup_kode","jabatan","status","id","created_date","updated_date","created_by_id","is_sample"
+"Juan Marchello","mjuanmarchello07@gmail.com","kaderdigital","user","STAF","Kader Digital","Aktif","6af980b442f62223bda0a78b","2026-11-15T09:51:48.338000","2026-11-15T09:51:48.338000","service_02ad05b8-7e26-483d-b4b3-6d74a13cdb77","false"
+"Wiwi Mulyani","mwiwi2967@gmail.com","mwiwi","user","STAF","","Aktif","6af84fcb34702934ae282788","2026-11-14T12:10:51.442000","2026-11-14T12:10:51.442000","6abb730e81a0de8b8650b498","false"
+"Intan Lisfani","intanlisfani68@gmail.com","intanlisfani","user","STAF","","Aktif","6af84fcb34702934ae282787","2026-11-14T12:10:51.442000","2026-11-14T12:10:51.442000","6abb730e81a0de8b8650b498","false"
+"Desa Tagog Apu","desatagogapu5@gmail.com","desatagogapu5","user","ADM","","Aktif","6af84fcb34702934ae282786","2026-11-14T12:10:51.442000","2026-11-15T11:01:06.443000","6abb730e81a0de8b8650b498","false"
+"Mochamad Wendy","moch.wendy@gmail.com","moch.wendy","user","ADM","","Aktif","6af84fcb34702934ae282785","2026-11-14T12:10:51.442000","2026-11-15T10:51:30.699000","6abb730e81a0de8b8650b498","false"
+"htridianto","htridianto@gmail.com","htridianto","user","ADM","","Aktif","6af84fcb34702934ae282784","2026-11-14T12:10:51.442000","2026-11-15T10:58:29.455000","6abb730e81a0de8b8650b498","false"
+"wendy virgana","wendy.virgana@gmail.com","wendy.virgana","admin","SU","","Aktif","6af84fcb34702934ae282783","2026-11-14T12:10:51.442000","2026-11-14T12:10:51.442000","6abb730e81a0de8b8650b498","false"

@@ -1,0 +1,58 @@
+{
+    "name": "Berita",
+    "type": "object",
+    "properties": {
+      "judul": {
+        "type": "string",
+        "title": "Judul Berita"
+      },
+      "ringkasan": {
+        "type": "string",
+        "title": "Ringkasan",
+        "description": "Ringkasan singkat berita untuk tampilan daftar"
+      },
+      "isi": {
+        "type": "string",
+        "title": "Isi Berita"
+      },
+      "gambar_url": {
+        "type": "string",
+        "title": "URL Gambar"
+      },
+      "kategori": {
+        "type": "string",
+        "enum": [
+          "Berita",
+          "Pengumuman",
+          "Kegiatan",
+          "Agenda"
+        ],
+        "title": "Kategori",
+        "default": "Berita"
+      },
+      "penulis": {
+        "type": "string",
+        "title": "Penulis"
+      },
+      "tanggal_publikasi": {
+        "type": "string",
+        "format": "date",
+        "title": "Tanggal Publikasi"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "Draft",
+          "Dipublikasi",
+          "Arsip"
+        ],
+        "title": "Status",
+        "default": "Dipublikasi"
+      }
+    },
+    "required": [
+      "judul",
+      "isi",
+      "tanggal_publikasi"
+    ]
+  }

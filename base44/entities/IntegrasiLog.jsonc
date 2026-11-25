@@ -1,0 +1,68 @@
+{
+    "name": "IntegrasiLog",
+    "type": "object",
+    "properties": {
+      "sistem_tujuan": {
+        "type": "string",
+        "enum": [
+          "SIPD",
+          "SID",
+          "Prodeskel",
+          "DKI",
+          "Sistem Kabupaten",
+          "Sistem Provinsi",
+          "SPBE Nasional",
+          "OpenSID"
+        ],
+        "title": "Sistem Tujuan"
+      },
+      "level": {
+        "type": "string",
+        "enum": [
+          "Desa",
+          "Kabupaten",
+          "Provinsi",
+          "Nasional"
+        ],
+        "title": "Level Integrasi"
+      },
+      "jenis_data": {
+        "type": "string",
+        "title": "Jenis Data yang Disinkronisasi"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "Berhasil",
+          "Gagal",
+          "Proses",
+          "Terjadwal"
+        ],
+        "title": "Status Sinkronisasi"
+      },
+      "jumlah_record": {
+        "type": "number",
+        "title": "Jumlah Record",
+        "default": 0
+      },
+      "timestamp": {
+        "type": "string",
+        "format": "date-time",
+        "title": "Waktu Sinkronisasi"
+      },
+      "response_code": {
+        "type": "string",
+        "title": "Response Code"
+      },
+      "keterangan": {
+        "type": "string",
+        "title": "Keterangan"
+      }
+    },
+    "required": [
+      "sistem_tujuan",
+      "level",
+      "jenis_data",
+      "status"
+    ]
+  }

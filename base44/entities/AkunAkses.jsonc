@@ -1,0 +1,79 @@
+{
+    "name": "AkunAkses",
+    "type": "object",
+    "properties": {
+      "nama": {
+        "type": "string",
+        "title": "Nama Lengkap"
+      },
+      "email": {
+        "type": "string",
+        "title": "Email untuk Undangan & Login Google"
+      },
+      "username": {
+        "type": "string",
+        "title": "Username Login"
+      },
+      "role": {
+        "type": "string",
+        "enum": [
+          "admin",
+          "user"
+        ],
+        "enumColors": [
+          "red",
+          "blue"
+        ],
+        "title": "Tingkat Kewenangan",
+        "default": "user"
+      },
+      "grup_kode": {
+        "type": "string",
+        "title": "Kode Grup Pengguna"
+      },
+      "jabatan": {
+        "type": "string",
+        "title": "Jabatan / Unit Kerja"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "Aktif",
+          "Nonaktif"
+        ],
+        "enumColors": [
+          "green",
+          "red"
+        ],
+        "title": "Status Akun",
+        "default": "Aktif"
+      }
+    },
+    "required": [
+      "nama",
+      "email",
+      "username"
+    ],
+    "rls": {
+      "read": {
+        "user_condition": {
+          "role": "admin"
+        }
+      },
+      "create": {
+        "user_condition": {
+          "role": "admin"
+        }
+      },
+      "update": {
+        "user_condition": {
+          "role": "admin"
+        }
+      },
+      "delete": {
+        "user_condition": {
+          "role": "admin"
+        }
+      }
+    }
+  }

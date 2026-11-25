@@ -1,0 +1,174 @@
+import { base44 } from '@/api/base44Client';
+import { loadLocalData } from './localData';
+
+// Indikator kependudukan dihitung di server lewat fungsi publik, sehingga portal tetap tampil
+// untuk pengunjung yang belum login tanpa membuka data pribadi penduduk.
+// Hasil di-cache sebentar agar dashboard, beranda, dan halaman penduduk tidak memanggil ulang terus-menerus.
+const STATS_TTL = 60 * 1000;
+let statsCache = null;
+let statsCacheAt = 0;
+
+// Cek apakah sedang di localhost (tanpa Base44 backend)
+const IS_LOCALHOST = typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+export async function fetchPendudukStats({ force = false } = {}) {
+  if (!force && statsCache && Date.now() - statsCacheAt < STATS_TTL) return statsCache;
+
+  // Di localhost, langsung baca dari CSV lokal tanpa menghubungi API Base44
+  if (IS_LOCALHOST) {
+    const rows = await loadLocalData('Penduduk');
+    const total = rows.length;
+    const lakiLaki = rows.filter((r) => (r.jenis_kelamin || '').toLowerCase() === 'laki-laki').length;
+    const perempuan = rows.filter((r) => (r.jenis_kelamin || '').toLowerCase() === 'perempuan').length;
+    const mkRows = new Set(rows.map((r) => r.no_kk).filter((k) => k));
+    const totalKK = mkRows.size;
+
+    // Usia produktif (15-64) dari kolom kelompok_usia
+    let usiaProduktif = 0;
+    rows.forEach((r) => {
+      const k = (r.kelompok_usia || '');
+      const m = k.match(/(\d+)/);
+      if (m && Number(m[1]) >= 15 && Number(m[1]) <= 64) usiaProduktif++;
+    });
+
+    const disabilitas = rows.filter((r) => (r.disabilitas || '') !== '').length;
+
+    const stats = {
+      total,
+      totalKK: totalKK || 0,
+      disabilitas,
+      lakiLaki,
+      perempuan,
+      usiaProduktif,
+      gender: [],
+      usia: [],
+      pendidikan: [],
+      pekerjaan: [],
+      perkawinan: [],
+      keluarga: [],
+      agama: [],
+      wilayah: [],
+    };
+
+    statsCache = stats;
+    statsCacheAt = Date.now();
+    return stats;
+  }
+
+  // Try API first (produksi)
+  try {
+    const response = await base44.functions.invoke('getPendudukStats', {});
+    const raw = response?.data || {};
+
+    const total = raw.total || 0;
+    const disabilitas = raw.disabilitas || 0;
+    const kk = raw.kk || 0;
+
+    // Gender from API
+    const genderPairs = [];
+    if (raw.gender && Array.isArray(raw.gender)) {
+      genderPairs.push(...raw.gender.filter((r) => r.jenis_kelamin && String(r.jenis_kelamin).trim()));
+    }
+
+    // USIA from API
+    const usiaPairs = [];
+    if (raw.usia && Array.isArray(raw.usia)) {
+      usiaPairs.push(...raw.usia.filter((r) => r.kelompok_usia && String(r.kelompok_usia).trim()));
+    }
+
+    const lakiLaki = genderPairs.find((r) => String(r.jenis_kelamin || '').toLowerCase() === 'laki-laki')?.count || 0;
+    const perempuan = genderPairs.find((r) => String(r.jenis_kelamin || '').toLowerCase() === 'perempuan')?.count || 0;
+
+    const usiaProduktif = usiaPairs
+      .filter((row) => ['15-24 Tahun', '25-44 Tahun', '45-64 Tahun'].includes(row.kelompok_usia || ''))
+      .reduce((sum, row) => sum + (row.count || 0), 0);
+
+    const stats = {
+      total,
+      totalKK: kk || 0,
+      disabilitas,
+      lakiLaki,
+      perempuan,
+      usiaProduktif,
+      gender: genderPairs,
+      usia: usiaPairs,
+      pendidikan: toPairs(raw.pendidikan, 'pendidikan'),
+      pekerjaan: toPairs(raw.pekerjaan, 'pekerjaan').slice(0, 10),
+      perkawinan: toPairs(raw.perkawinan, 'status_perkawinan'),
+      keluarga: toPairs(raw.keluarga, 'status_keluarga'),
+      agama: toPairs(raw.agama, 'agama'),
+      wilayah: normalizeWilayah(raw.wilayah || []),
+    };
+
+    statsCache = stats;
+    statsCacheAt = Date.now();
+    return stats;
+  } catch (e) {
+    console.warn('API fetchPendudukStats failed, falling back to local CSV', e);
+  }
+
+  // Fallback ke CSV lokal (jika API produktif gagal)
+  const rows = await loadLocalData('Penduduk');
+  const total = rows.length;
+  const lakiLaki = rows.filter((r) => (r.jenis_kelamin || '').toLowerCase() === 'laki-laki').length;
+  const perempuan = rows.filter((r) => (r.jenis_kelamin || '').toLowerCase() === 'perempuan').length;
+  const mkRows = new Set(rows.map((r) => r.no_kk).filter((k) => k));
+  const totalKK = mkRows.size;
+
+  // Usia produktif (15-64) dari kolom kelompok_usia
+  let usiaProduktif = 0;
+  rows.forEach((r) => {
+    const k = (r.kelompok_usia || '');
+    const m = k.match(/(\d+)/);
+    if (m && Number(m[1]) >= 15 && Number(m[1]) <= 64) usiaProduktif++;
+  });
+
+  const disabilitas = rows.filter((r) => (r.disabilitas || '') !== '').length;
+
+  const stats = {
+    total,
+    totalKK: totalKK || 0,
+    disabilitas,
+    lakiLaki,
+    perempuan,
+    usiaProduktif,
+    gender: [],
+    usia: [],
+    pendidikan: [],
+    pekerjaan: [],
+    perkawinan: [],
+    keluarga: [],
+    agama: [],
+    wilayah: [],
+  };
+
+  statsCache = stats;
+  statsCacheAt = Date.now();
+  return stats;
+}
+
+export function normalizeWilayah(rows) {
+  return (rows || [])
+    .filter((row) => row.rw)
+    .map((row) => ({ name: `RW ${row.rw}`, value: row.count || 0 }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function toPairs(rows, field) {
+  return (rows || [])
+    .filter((row) => row[field] !== null && row[field] !== undefined && String(row[field]).trim() !== '')
+    .map((row) => ({ name: String(row[field]).trim(), value: row.count || 0 }))
+    .sort((a, b) => b.value - a.value);
+}
+
+export async function fetchAllPenduduk() {
+  const stats = await fetchPendudukStats();
+  return loadLocalData('Penduduk');
+}
+
+export function fetchRwOptions() {
+  return loadLocalData('Penduduk').then(rows => {
+    return [...new Set(rows.map(r => r.rw).filter(Boolean))].sort();
+  });
+}

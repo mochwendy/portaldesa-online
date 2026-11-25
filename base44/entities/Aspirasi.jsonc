@@ -1,0 +1,127 @@
+{
+    "name": "Aspirasi",
+    "type": "object",
+    "properties": {
+      "nomor_tiket": {
+        "type": "string",
+        "title": "Nomor Tiket"
+      },
+      "nama": {
+        "type": "string",
+        "title": "Nama Pelapor"
+      },
+      "nik": {
+        "type": "string",
+        "title": "NIK Pelapor",
+        "description": "NIK harus terdaftar pada data penduduk desa"
+      },
+      "no_telepon": {
+        "type": "string",
+        "title": "Nomor WhatsApp / Telepon"
+      },
+      "kategori": {
+        "type": "string",
+        "enum": [
+          "Pengaduan",
+          "Aspirasi",
+          "Permintaan Informasi"
+        ],
+        "enumColors": [
+          "red",
+          "purple",
+          "blue"
+        ],
+        "title": "Kategori"
+      },
+      "judul": {
+        "type": "string",
+        "title": "Judul / Ringkasan"
+      },
+      "isi": {
+        "type": "string",
+        "title": "Isi Laporan / Aspirasi"
+      },
+      "alamat": {
+        "type": "string",
+        "title": "Alamat Pelapor (dari data penduduk)"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "Baru",
+          "Diproses",
+          "Dijawab",
+          "Selesai",
+          "Ditolak"
+        ],
+        "enumColors": [
+          "blue",
+          "yellow",
+          "purple",
+          "green",
+          "red"
+        ],
+        "title": "Status",
+        "default": "Baru"
+      },
+      "tanggapan": {
+        "type": "string",
+        "title": "Tanggapan Pemerintah Desa"
+      },
+      "tanggal_tanggapan": {
+        "type": "string",
+        "format": "date",
+        "title": "Tanggal Tanggapan"
+      },
+      "petugas": {
+        "type": "string",
+        "title": "Petugas Penanggung Jawab"
+      }
+    },
+    "required": [
+      "nama",
+      "nik",
+      "kategori",
+      "isi"
+    ],
+    "rls": {
+      "read": {
+        "$or": [
+          {
+            "user_condition": {
+              "role": "admin"
+            }
+          },
+          {
+            "user_condition": {
+              "role": "user"
+            }
+          }
+        ]
+      },
+      "create": {
+        "user_condition": {
+          "role": "admin"
+        }
+      },
+      "update": {
+        "$or": [
+          {
+            "user_condition": {
+              "role": "admin"
+            }
+          },
+          {
+            "user_condition": {
+              "role": "user"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "user_condition": {
+          "role": "admin"
+        }
+      }
+    }
+  }

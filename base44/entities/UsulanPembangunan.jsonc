@@ -1,0 +1,106 @@
+{
+    "name": "UsulanPembangunan",
+    "type": "object",
+    "properties": {
+      "judul_usulan": {
+        "type": "string",
+        "title": "Judul Usulan"
+      },
+      "pengusul": {
+        "type": "string",
+        "title": "Nama Pengusul"
+      },
+      "rw": {
+        "type": "string",
+        "title": "RW"
+      },
+      "dusun": {
+        "type": "string",
+        "title": "Dusun"
+      },
+      "kategori": {
+        "type": "string",
+        "enum": [
+          "Infrastruktur Jalan",
+          "Sarana Air Bersih",
+          "Irigasi",
+          "Pendidikan",
+          "Kesehatan",
+          "Sarana Umum",
+          "Ekonomi Produktif",
+          "Kebersihan",
+          "Penerangan",
+          "Lainnya"
+        ],
+        "title": "Kategori"
+      },
+      "deskripsi": {
+        "type": "string",
+        "title": "Deskripsi Usulan"
+      },
+      "lokasi": {
+        "type": "string",
+        "title": "Lokasi"
+      },
+      "estimasi_anggaran": {
+        "type": "number",
+        "title": "Estimasi Anggaran (Rp)",
+        "default": 0
+      },
+      "prioritas": {
+        "type": "string",
+        "enum": [
+          "Sangat Tinggi",
+          "Tinggi",
+          "Sedang",
+          "Rendah"
+        ],
+        "title": "Prioritas",
+        "default": "Sedang"
+      },
+      "tahun_anggaran": {
+        "type": "number",
+        "title": "Tahun Anggaran",
+        "default": 2026
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "Diajukan",
+          "Diverifikasi",
+          "Disetujui",
+          "Masuk Anggaran",
+          "Ditolak",
+          "Direalisasi",
+          "Selesai"
+        ],
+        "title": "Status",
+        "default": "Diajukan"
+      },
+      "tanggal_usulan": {
+        "type": "string",
+        "format": "date",
+        "title": "Tanggal Usulan"
+      },
+      "catatan_verifikasi": {
+        "type": "string",
+        "title": "Catatan Verifikasi"
+      },
+      "terkait_apbdes": {
+        "type": "boolean",
+        "title": "Selaras APBDes Berjalan",
+        "default": false
+      },
+      "musdus_file_uri": {
+        "type": "string",
+        "title": "Dokumen Berita Acara MUSDUS",
+        "description": "File URI dokumen berita acara musyawarah dusun"
+      }
+    },
+    "required": [
+      "judul_usulan",
+      "pengusul",
+      "kategori",
+      "tanggal_usulan"
+    ]
+  }

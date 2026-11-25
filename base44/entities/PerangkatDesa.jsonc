@@ -1,0 +1,59 @@
+{
+    "name": "PerangkatDesa",
+    "type": "object",
+    "properties": {
+      "nama": {
+        "type": "string",
+        "title": "Nama Lengkap"
+      },
+      "jabatan": {
+        "type": "string",
+        "enum": [
+          "Kepala Desa",
+          "Sekretaris Desa",
+          "Kaur Keuangan",
+          "Kaur Perencanaan",
+          "Kasi Pemerintahan",
+          "Kasi Kesejahteraan",
+          "Kasi Pelayanan",
+          "Kepala Dusun",
+          "Lainnya"
+        ],
+        "title": "Jabatan"
+      },
+      "nip": {
+        "type": "string",
+        "title": "NIP"
+      },
+      "foto_url": {
+        "type": "string",
+        "title": "URL Foto"
+      },
+      "no_telepon": {
+        "type": "string",
+        "title": "Nomor Telepon"
+      },
+      "email": {
+        "type": "string",
+        "title": "Email"
+      },
+      "bidang": {
+        "type": "string",
+        "title": "Bidang Tugas"
+      },
+      "urutan": {
+        "type": "number",
+        "title": "Urutan Tampil",
+        "default": 0
+      },
+      "ttd_file_uri": {
+        "type": "string",
+        "title": "File Tanda Tangan Digital",
+        "description": "File URI gambar tanda tangan (privat)"
+      }
+    },
+    "required": [
+      "nama",
+      "jabatan"
+    ]
+  }

@@ -1,0 +1,50 @@
+{
+    "name": "Pengumuman",
+    "type": "object",
+    "properties": {
+      "judul": {
+        "type": "string",
+        "title": "Judul Pengumuman"
+      },
+      "isi": {
+        "type": "string",
+        "title": "Isi Pengumuman"
+      },
+      "kategori": {
+        "type": "string",
+        "enum": [
+          "Pengumuman",
+          "Berita",
+          "Kegiatan",
+          "Undangan",
+          "Peringatan"
+        ],
+        "title": "Kategori",
+        "default": "Pengumuman"
+      },
+      "tanggal_publikasi": {
+        "type": "string",
+        "format": "date",
+        "title": "Tanggal Publikasi"
+      },
+      "penulis": {
+        "type": "string",
+        "title": "Penulis"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "Draft",
+          "Dipublikasi",
+          "Arsip"
+        ],
+        "title": "Status",
+        "default": "Dipublikasi"
+      }
+    },
+    "required": [
+      "judul",
+      "isi",
+      "tanggal_publikasi"
+    ]
+  }

@@ -1,0 +1,53 @@
+{
+    "name": "DokumenPembangunan",
+    "type": "object",
+    "properties": {
+      "nama_dokumen": {
+        "type": "string",
+        "title": "Nama Dokumen"
+      },
+      "jenis_dokumen": {
+        "type": "string",
+        "enum": [
+          "Juklak",
+          "Juknis",
+          "RKPDes",
+          "RPJMDes",
+          "Peraturan Desa",
+          "Lainnya"
+        ],
+        "title": "Jenis Dokumen"
+      },
+      "tahun": {
+        "type": "number",
+        "title": "Tahun"
+      },
+      "deskripsi": {
+        "type": "string",
+        "title": "Deskripsi"
+      },
+      "file_uri": {
+        "type": "string",
+        "title": "File URI"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "Aktif",
+          "Arsip"
+        ],
+        "title": "Status",
+        "default": "Aktif"
+      },
+      "tanggal_upload": {
+        "type": "string",
+        "format": "date",
+        "title": "Tanggal Upload"
+      }
+    },
+    "required": [
+      "nama_dokumen",
+      "jenis_dokumen",
+      "tahun"
+    ]
+  }

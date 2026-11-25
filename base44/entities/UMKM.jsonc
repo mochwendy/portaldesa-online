@@ -1,0 +1,75 @@
+{
+    "name": "UMKM",
+    "type": "object",
+    "properties": {
+      "nama_usaha": {
+        "type": "string",
+        "title": "Nama Usaha"
+      },
+      "nama_pemilik": {
+        "type": "string",
+        "title": "Nama Pemilik"
+      },
+      "kategori": {
+        "type": "string",
+        "enum": [
+          "Kuliner",
+          "Kerajinan",
+          "Pertanian",
+          "Perdagangan",
+          "Jasa",
+          "Pariwisata",
+          "Lainnya"
+        ],
+        "title": "Kategori"
+      },
+      "deskripsi": {
+        "type": "string",
+        "title": "Deskripsi Produk"
+      },
+      "alamat": {
+        "type": "string",
+        "title": "Alamat Usaha"
+      },
+      "kontak": {
+        "type": "string",
+        "title": "Kontak (WhatsApp/Telepon)"
+      },
+      "harga_range": {
+        "type": "string",
+        "title": "Kisaran Harga"
+      },
+      "gambar_url": {
+        "type": "string",
+        "title": "URL Gambar Produk"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "Aktif",
+          "Nonaktif"
+        ],
+        "title": "Status",
+        "default": "Aktif"
+      }
+    },
+    "required": [
+      "nama_usaha",
+      "nama_pemilik",
+      "kategori"
+    ],
+    "rls": {
+      "read": {},
+      "create": {},
+      "update": {
+        "user_condition": {
+          "role": "admin"
+        }
+      },
+      "delete": {
+        "user_condition": {
+          "role": "admin"
+        }
+      }
+    }
+  }

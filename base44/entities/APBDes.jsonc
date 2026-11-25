@@ -1,0 +1,59 @@
+{
+    "name": "APBDes",
+    "type": "object",
+    "properties": {
+      "tahun_anggaran": {
+        "type": "number",
+        "title": "Tahun Anggaran",
+        "default": 2026
+      },
+      "jenis": {
+        "type": "string",
+        "enum": [
+          "Pendapatan",
+          "Belanja",
+          "Pembiayaan"
+        ],
+        "title": "Jenis Anggaran"
+      },
+      "kategori": {
+        "type": "string",
+        "title": "Kategori"
+      },
+      "sub_kategori": {
+        "type": "string",
+        "title": "Sub Kategori"
+      },
+      "anggaran": {
+        "type": "number",
+        "title": "Jumlah Anggaran (Rp)"
+      },
+      "realisasi": {
+        "type": "number",
+        "title": "Jumlah Realisasi (Rp)",
+        "default": 0
+      },
+      "sumber_dana": {
+        "type": "string",
+        "enum": [
+          "Dana Desa",
+          "APBD",
+          "APBN",
+          "PADes",
+          "Lainnya"
+        ],
+        "title": "Sumber Dana",
+        "default": "Dana Desa"
+      },
+      "keterangan": {
+        "type": "string",
+        "title": "Keterangan"
+      }
+    },
+    "required": [
+      "tahun_anggaran",
+      "jenis",
+      "kategori",
+      "anggaran"
+    ]
+  }
