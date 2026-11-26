@@ -25,20 +25,15 @@ export default function EmergencyWidget() {
     window.open(`tel:${number}`, '_self');
   };
 
-  const openWhatsApp = (number) => {
-    const cleanNumber = number.replace(/\D/g, '');
-    window.open(`https://wa.me/${cleanNumber}`, '_blank');
-  };
-
   if (loading || contacts.length === 0) {
     return null;
   }
 
   return (
     <div className="fixed left-4 bottom-24 md:bottom-6 z-50">
-      <div className="flex flex-col items-end gap-2">
+      <div className="relative">
         {isOpen && (
-          <div className="bg-white rounded-2xl shadow-xl border border-rose-100 w-72 md:w-80 overflow-hidden animate-slide-in-right">
+          <div className="absolute bottom-16 left-0 z-50 w-72 md:w-80 bg-white rounded-2xl shadow-xl border border-rose-100 overflow-hidden animate-slide-in-up">
             <div className="bg-rose-600 text-white px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShieldAlert className="w-5 h-5" />
@@ -53,42 +48,45 @@ export default function EmergencyWidget() {
               </button>
             </div>
             <div className="p-3 space-y-3 max-h-64 overflow-y-auto">
-              {contacts.map((contact) => (
-                <div key={contact.id} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
-                      <Phone className="w-5 h-5 text-rose-600" />
+              {contacts.map((contact) => {
+                const whatsappMessage = encodeURIComponent(`Darurat: Saya membutuhkan bantuan dari ${contact.nama_layanan} di Desa Tagogapu.`);
+                return (
+                  <div key={contact.id} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
+                        <Phone className="w-5 h-5 text-rose-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-slate-900">{contact.nama_layanan}</p>
+                        <p className="text-xs text-slate-500">{contact.nama_petugas} — {contact.jabatan}</p>
+                        <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium bg-rose-100 text-rose-700 rounded-full">
+                          {contact.kategori}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-900">{contact.nama_layanan}</p>
-                      <p className="text-xs text-slate-500">{contact.nama_petugas} — {contact.jabatan}</p>
-                      <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium bg-rose-100 text-rose-700 rounded-full">
-                        {contact.kategori}
-                      </span>
+                    <div className="mt-3 flex gap-2">
+                      {contact.no_telepon && (
+                        <button
+                          onClick={() => makePhoneCall(contact.no_telepon)}
+                          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 transition-colors"
+                        >
+                          <PhoneCall className="w-4 h-4" />
+                          Seluler
+                        </button>
+                      )}
+                      {contact.no_whatsapp && (
+                        <button
+                          onClick={() => window.open(`https://wa.me/${contact.no_whatsapp.replace(/\D/g, '')}?text=${whatsappMessage}`, '_blank')}
+                          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          WhatsApp (Chat / Call)
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <div className="mt-3 flex gap-2">
-                    {contact.no_telepon && (
-                      <button
-                        onClick={() => makePhoneCall(contact.no_telepon)}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 transition-colors"
-                      >
-                        <PhoneCall className="w-4 h-4" />
-                        Telepon
-                      </button>
-                    )}
-                    {contact.no_whatsapp && (
-                      <button
-                        onClick={() => openWhatsApp(contact.no_whatsapp)}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        WhatsApp
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -102,11 +100,11 @@ export default function EmergencyWidget() {
         </button>
       </div>
       <style jsx global>{`
-        @keyframes slide-in-right {
-          from { opacity: 0; transform: translateX(20px); }
-          to { opacity: 1; transform: translateX(0); }
+        @keyframes slide-in-up {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .animate-slide-in-right { animation: slide-in-right 0.2s ease-out; }
+        .animate-slide-in-up { animation: slide-in-up 0.2s ease-out; }
       `}</style>
     </div>
   );
