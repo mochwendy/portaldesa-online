@@ -53,56 +53,56 @@ export default function Beranda() {
             const g = r.jenis_kelamin || 'Tidak Diketahui';
             genderCounts[g] = (genderCounts[g] || 0) + 1;
           });
-          const gender = Object.entries(genderCounts).map(([jenis_kelamin, count]) => ({ jenis_kelamin, count }));
+          const gender = Object.entries(genderCounts).map(([name, value]) => ({ name, value: Number(value) || 0 }));
 
           const usiaCounts = {};
           pendudukRows.forEach((r) => {
             const u = r.kelompok_usia || 'Tidak Diketahui';
             usiaCounts[u] = (usiaCounts[u] || 0) + 1;
           });
-          const usia = Object.entries(usiaCounts).map(([kelompok_usia, count]) => ({ kelompok_usia, count }));
+          const usia = Object.entries(usiaCounts).map(([name, value]) => ({ name, value: Number(value) || 0 }));
 
           const pendidikanCounts = {};
           pendudukRows.forEach((r) => {
             const p = r.pendidikan || 'Tidak Diketahui';
             pendidikanCounts[p] = (pendidikanCounts[p] || 0) + 1;
           });
-          const pendidikan = Object.entries(pendidikanCounts).map(([pendidikan, count]) => ({ pendidikan, count }));
+          const pendidikan = Object.entries(pendidikanCounts).map(([name, value]) => ({ name, value: Number(value) || 0 }));
 
           const pekerjaanCounts = {};
           pendudukRows.forEach((r) => {
             const p = r.pekerjaan || 'Tidak Diketahui';
             pekerjaanCounts[p] = (pekerjaanCounts[p] || 0) + 1;
           });
-          const pekerjaan = Object.entries(pekerjaanCounts).map(([pekerjaan, count]) => ({ pekerjaan, count })).slice(0, 10);
+          const pekerjaan = Object.entries(pekerjaanCounts).map(([name, value]) => ({ name, value: Number(value) || 0 })).slice(0, 10);
 
           const perkawinanCounts = {};
           pendudukRows.forEach((r) => {
             const p = r.status_perkawinan || 'Tidak Diketahui';
             perkawinanCounts[p] = (perkawinanCounts[p] || 0) + 1;
           });
-          const perkawinan = Object.entries(perkawinanCounts).map(([status_perkawinan, count]) => ({ status_perkawinan, count }));
+          const perkawinan = Object.entries(perkawinanCounts).map(([name, value]) => ({ name, value: Number(value) || 0 }));
 
           const keluargaCounts = {};
           pendudukRows.forEach((r) => {
             const k = r.status_keluarga || 'Tidak Diketahui';
             keluargaCounts[k] = (keluargaCounts[k] || 0) + 1;
           });
-          const keluarga = Object.entries(keluargaCounts).map(([status_keluarga, count]) => ({ status_keluarga, count }));
+          const keluarga = Object.entries(keluargaCounts).map(([name, value]) => ({ name, value: Number(value) || 0 }));
 
           const agamaCounts = {};
           pendudukRows.forEach((r) => {
             const a = r.agama || 'Tidak Diketahui';
             agamaCounts[a] = (agamaCounts[a] || 0) + 1;
           });
-          const agama = Object.entries(agamaCounts).map(([agama, count]) => ({ agama, count }));
+          const agama = Object.entries(agamaCounts).map(([name, value]) => ({ name, value: Number(value) || 0 }));
 
           const wilayahCounts = {};
           pendudukRows.forEach((r) => {
             const rw = r.rw || '';
             if (rw) wilayahCounts[rw] = (wilayahCounts[rw] || 0) + 1;
           });
-          const wilayah = Object.entries(wilayahCounts).map(([rw, count]) => ({ rw, count })).sort((a, b) => a.rw.localeCompare(b.rw));
+          const wilayah = Object.entries(wilayahCounts).map(([name, value]) => ({ name: `RW ${name}`, value: Number(value) || 0 })).sort((a, b) => a.name.localeCompare(b.name));
 
           let usiaProduktif = 0;
           pendudukRows.forEach((r) => {
