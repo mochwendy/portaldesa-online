@@ -41,14 +41,14 @@ export async function fetchPendudukStats({ force = false } = {}) {
       lakiLaki,
       perempuan,
       usiaProduktif,
-      gender: [],
-      usia: [],
-      pendidikan: [],
-      pekerjaan: [],
-      perkawinan: [],
-      keluarga: [],
-      agama: [],
-      wilayah: [],
+      gender: countToPairs(rows, 'jenis_kelamin'),
+      usia: countToPairs(rows, 'kelompok_usia'),
+      pendidikan: countToPairs(rows, 'pendidikan'),
+      pekerjaan: countToPairs(rows, 'pekerjaan').slice(0, 10),
+      perkawinan: countToPairs(rows, 'status_perkawinan'),
+      keluarga: countToPairs(rows, 'status_keluarga'),
+      agama: countToPairs(rows, 'agama'),
+      wilayah: countToPairs(rows, 'rw', (v) => `RW ${v}`),
     };
 
     statsCache = stats;
@@ -133,14 +133,14 @@ export async function fetchPendudukStats({ force = false } = {}) {
     lakiLaki,
     perempuan,
     usiaProduktif,
-    gender: [],
-    usia: [],
-    pendidikan: [],
-    pekerjaan: [],
-    perkawinan: [],
-    keluarga: [],
-    agama: [],
-    wilayah: [],
+    gender: countToPairs(rows, 'jenis_kelamin'),
+    usia: countToPairs(rows, 'kelompok_usia'),
+    pendidikan: countToPairs(rows, 'pendidikan'),
+    pekerjaan: countToPairs(rows, 'pekerjaan').slice(0, 10),
+    perkawinan: countToPairs(rows, 'status_perkawinan'),
+    keluarga: countToPairs(rows, 'status_keluarga'),
+    agama: countToPairs(rows, 'agama'),
+    wilayah: countToPairs(rows, 'rw', (v) => `RW ${v}`),
   };
 
   statsCache = stats;
@@ -153,6 +153,18 @@ export function normalizeWilayah(rows) {
     .filter((row) => row.rw)
     .map((row) => ({ name: `RW ${row.rw}`, value: row.count || 0 }))
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function countToPairs(rows, field, nameFn) {
+  const counts = {};
+  rows.forEach((r) => {
+    const v = r[field] || '';
+    if (v === '' || v === null || v === undefined) return;
+    counts[v] = (counts[v] || 0) + 1;
+  });
+  return Object.entries(counts)
+    .map(([name, value]) => ({ name: nameFn ? nameFn(name) : String(name).trim(), value: Number(value) || 0 }))
+    .sort((a, b) => b.value - a.value);
 }
 
 export function toPairs(rows, field) {

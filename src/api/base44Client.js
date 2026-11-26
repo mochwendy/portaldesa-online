@@ -109,15 +109,7 @@ function createEntityAPI(entityName) {
       const rows = Array.isArray(await loadEntityData(entityName)) ? await loadEntityData(entityName) : [];
       let res = localQuery(rows, query);
       res = sortRows(res, opts.sort);
-      const lim = opts.limit || 25;
-      let start = 0;
-      if (opts.cursor) {
-        const idx = res.findIndex((r) => r.id === opts.cursor);
-        start = idx >= 0 ? idx + 1 : 0;
-      }
-      const items = res.slice(start, start + lim);
-      const has_more = start + lim < res.length;
-      return { items, has_more, next_cursor: has_more && items.length ? items[items.length - 1].id : null };
+      return res;
     },
     async count(query = {}) {
       const rows = Array.isArray(await loadEntityData(entityName)) ? await loadEntityData(entityName) : [];

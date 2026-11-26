@@ -21,8 +21,8 @@ export default function TransparansiAPBDesPublik() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await base44.entities.APBDes.filter({ tahun_anggaran: 2026 }, '-created_date', 200);
-        setRecords(data);
+        const data = await base44.entities.APBDes.filter({ tahun_anggaran: 2026 });
+        setRecords(Array.isArray(data) ? data : []);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
     })();

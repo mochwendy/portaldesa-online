@@ -27,7 +27,7 @@ export default function PublicNavbar() {
       { published: true, kategori: 'menu_utama' },
       { sort: 'urutan', limit: 50 }
     )
-      .then(({ items }) => {
+      .then((items) => {
         if (items && items.length > 0) {
           setNavItems(items.map((m) => ({
             to: m.path,
@@ -41,7 +41,7 @@ export default function PublicNavbar() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 bg-teal-800 text-white shadow-lg">
+    <header className="sticky top-0 z-50 bg-[#0A635D] text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center gap-2.5 flex-shrink-0">
@@ -78,7 +78,7 @@ export default function PublicNavbar() {
                   className={({ isActive }) =>
                     `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       isActive
-                        ? 'bg-orange-500 text-orange-100'
+                        ? 'bg-[#E59824] text-slate-900'
                         : 'text-teal-300 hover:bg-white/10 hover:text-teal-300'
                     }`
                   }
@@ -89,10 +89,9 @@ export default function PublicNavbar() {
             )}
             <Link
               to="/admin"
-              className="ml-2 flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-orange-500 text-orange-100 hover:bg-orange-600 transition-colors"
+              className="ml-2 flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-white border border-white/30 bg-white/10 hover:bg-white/15 transition-colors"
             >
-              <Lock className="w-3.5 h-3.5" />
-              Admin
+              <Lock className="w-3.5 h-3.5" /> Admin
             </Link>
           </nav>
 
@@ -104,46 +103,6 @@ export default function PublicNavbar() {
           </button>
         </div>
       </div>
-
-      {mobileOpen && (
-        <nav className="lg:hidden bg-teal-800 border-t border-white/10 px-4 py-3 space-y-1">
-          {navItems.map((item) =>
-            item.is_external ? (
-              <a
-                key={item.to}
-                href={item.to}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setMobileOpen(false)}
-                className="block px-3 py-2.5 rounded-lg text-sm font-medium text-teal-300/80 hover:bg-white/10"
-              >
-                {item.label}
-              </a>
-            ) : (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                onClick={() => setMobileOpen(false)}
-                className={({ isActive }) =>
-                  `block px-3 py-2.5 rounded-lg text-sm font-medium ${
-                    isActive ? 'bg-orange-500 text-orange-100' : 'text-teal-300 hover:bg-white/10'
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            )
-          )}
-          <Link
-            to="/admin"
-            onClick={() => setMobileOpen(false)}
-            className="block px-3 py-2.5 rounded-lg text-sm font-medium bg-orange-500 text-orange-100"
-          >
-            🔒 Admin
-          </Link>
-        </nav>
-      )}
     </header>
   );
 }

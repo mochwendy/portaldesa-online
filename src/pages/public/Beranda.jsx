@@ -206,33 +206,33 @@ export default function Beranda() {
   return (
     <div>
       {/* Hero */}
-      <section className="relative h-[520px] flex items-center overflow-hidden bg-teal-800">
-        <div className="absolute inset-0 bg-teal-900/80" />
+      <section className="relative h-[520px] flex items-center overflow-hidden bg-[#0A635D]">
+        <div className="absolute inset-0 bg-[#0B6B64]/88" />
         <img
           src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1600&q=80"
           alt="Pemandangan Desa"
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0" />
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 text-teal-100">
-          <div className={`max-w-3xl mx-auto`}>
-            <p className="text-orange-500 font-semibold text-sm uppercase tracking-wider mb-2">
-              SELAMAT DATANG DI PORTAL LAYANAN DAN INOVASI DIGITAL
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-6">
+          <div className="max-w-3xl mx-auto text-center">
+            <p className="text-[#E59824] font-semibold text-sm uppercase tracking-wider mb-2">
+              SELAMAT DATANG DI PORTAL LAYANAN DIGITAL
             </p>
-            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3 text-teal-100">
+            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3 text-white">
               Desa Tagog Apu
             </h1>
-            <p className={`text-teal-200 text-base md:text-lg max-w-2xl mb-6 mx-auto`}>
+            <p className="text-white/90 text-base md:text-lg max-w-2xl mb-6 mx-auto">
               Mari Kita Sambut Era Baru Pelayanan Publik Pemerintah Desa Tagogapu
             </p>
-            <div className={`flex flex-wrap gap-3 justify-center`}>
-              <Link to="/layanan-surat" className="inline-flex items-center gap-2 bg-orange-500 text-orange-100 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-orange-600 transition-colors">
+            <div className="flex flex-wrap gap-3 justify-center">
+              <Link to="/layanan-surat" className="inline-flex items-center gap-2 bg-[#E59824] text-slate-900 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#E59824]/90 transition-colors">
                 <FileText className="w-4 h-4" /> Ajukan Surat Online
               </Link>
-              <Link to="/daftar-umkm" className="inline-flex items-center gap-2 bg-teal-200/20 text-teal-300 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-teal-300/30 transition-colors">
+              <Link to="/daftar-umkm" className="inline-flex items-center gap-2 border border-white/30 bg-white/10 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-white/15 transition-colors">
                 <Store className="w-4 h-4" /> Daftar UMKM
               </Link>
-              <Link to="/aspirasi" className="inline-flex items-center gap-2 bg-teal-200/20 text-teal-300 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-teal-300/30 transition-colors">
+              <Link to="/aspirasi" className="inline-flex items-center gap-2 border border-white/30 bg-white/10 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-white/15 transition-colors">
                 <MessagesSquare className="w-4 h-4" /> Aspirasi Warga
               </Link>
             </div>
@@ -259,13 +259,13 @@ export default function Beranda() {
               sub: `${data.aspirasiStats?.diproses || 0} diproses · ${data.aspirasiStats?.selesai || 0} selesai`,
             },
           ].map((s) => (
-            <div key={s.label} className="bg-card rounded-2xl border border-border p-5 shadow-sm">
-              <div className="w-10 h-10 rounded-xl bg-teal-600 text-orange-500 flex items-center justify-center mb-3">
+            <div key={s.label} className="bg-teal-50 rounded-2xl border border-border p-5 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center mb-3">
                 <s.icon className="w-5 h-5" />
               </div>
-              <p className="text-2xl font-extrabold text-teal-100">{s.value}</p>
-              <p className="text-sm font-medium text-teal-100">{s.label}</p>
-              <p className="text-xs text-teal-300/70">{s.sub}</p>
+              <p className="text-2xl font-extrabold text-slate-900">{s.value}</p>
+              <p className="text-sm font-medium text-slate-600">{s.label}</p>
+              <p className="text-xs text-slate-600/70">{s.sub}</p>
             </div>
           ))}
         </div>
@@ -282,12 +282,12 @@ export default function Beranda() {
               to={s.to}
               className="group bg-card rounded-2xl border border-border p-6 hover:shadow-md hover:border-teal-600 transition-all"
             >
-              <div className="w-12 h-12 rounded-xl bg-teal-500/20 text-orange-500 flex items-center justify-center mb-4 group-hover:bg-teal-500 group-hover:text-orange-400 transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-teal-500/20 text-[#E59824] flex items-center justify-center mb-4 group-hover:bg-teal-500 group-hover:text-[#E59824] transition-colors">
                 <s.icon className="w-6 h-6" />
               </div>
               <h3 className="font-bold text-lg mb-1">{s.label}</h3>
               <p className="text-sm text-teal-300/70">{s.desc}</p>
-              <span className="inline-flex items-center gap-1 text-sm text-orange-500 font-medium mt-3 group-hover:gap-2 transition-all">
+              <span className="inline-flex items-center gap-1 text-sm text-[#E59824] font-medium mt-3 group-hover:gap-2 transition-all">
                 Pelajari <ArrowRight className="w-4 h-4" />
               </span>
             </Link>
@@ -330,7 +330,7 @@ export default function Beranda() {
               </div>
               <Wallet className="w-8 h-8 text-amber-600" />
             </div>
-            <Link to="/transparansi-apbdes" className="block text-center text-sm text-orange-500 font-medium hover:underline pt-2">
+            <Link to="/transparansi-apbdes" className="block text-center text-sm text-[#E59824] font-medium hover:underline pt-2">
               Lihat rincian transparansi APBDes →
             </Link>
           </div>
@@ -347,11 +347,11 @@ export default function Beranda() {
             <div>
               <h2 className="text-2xl font-extrabold mb-3">Tentang Desa {profil.nama_desa}</h2>
               <div className="space-y-2 text-teal-200/80">
-                <p className="flex items-center gap-2"><MapPin className="w-4 h-4 text-orange-500" /> {profil.kecamatan}, {profil.kabupaten}, {profil.provinsi}</p>
+                <p className="flex items-center gap-2"><MapPin className="w-4 h-4 text-[#E59824]" /> {profil.kecamatan}, {profil.kabupaten}, {profil.provinsi}</p>
                 <p>Luas Wilayah: {profil.luas_wilayah} km² · {profil.jumlah_rt} RT / {profil.jumlah_rw} RW</p>
                 <p className="leading-relaxed mt-3">{profil.potensi_ekonomi || 'Desa dengan potensi ekonomi dan wisata yang berkembang.'}</p>
               </div>
-              <Link to="/profil-desa" className="inline-flex items-center gap-2 bg-orange-500 text-orange-100 px-5 py-2.5 rounded-xl text-sm font-semibold mt-5 hover:bg-orange-600">
+              <Link to="/profil-desa" className="inline-flex items-center gap-2 bg-[#E59824] text-[#E59824-foreground] px-5 py-2.5 rounded-xl text-sm font-semibold mt-5 hover:bg-[#E59824]/90">
                 Selengkapnya <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
