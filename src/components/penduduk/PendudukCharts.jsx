@@ -91,7 +91,7 @@ export default function PendudukCharts({ stats }) {
         <VerticalBars data={s.pendidikan || []} color="hsl(var(--chart-3))" />
       </ChartCard>
       <ChartCard title="Mata Pencaharian" subtitle="10 pekerjaan terbanyak">
-        <HorizontalBars data={s.pekerjaan || []} height={280} />
+        <VerticalBars data={s.pekerjaan || []} height={280} />
       </ChartCard>
       <ChartCard title="Sebaran Penduduk per RW" subtitle="Jumlah warga tiap wilayah RW" height={260}>
         <RwBars data={s.wilayah || []} height={260} />
