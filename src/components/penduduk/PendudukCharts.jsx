@@ -46,7 +46,7 @@ function HorizontalBars({ data, color = 'hsl(var(--chart-2))', height = 260 }) {
       <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" horizontal={false} />
         <XAxis type="number" fontSize={11} tickLine={false} axisLine={false} />
-        <YAxis type="category" dataKey="name" fontSize={10} width={130} tickLine={false} axisLine={false} />
+        <YAxis type="category" dataKey="name" fontSize={10} width={160} tickLine={false} axisLine={false} angle={-20} />
         <Tooltip contentStyle={tooltipStyle} />
         <Bar dataKey="value" fill={color} radius={[0, 6, 6, 0]} />
       </BarChart>
