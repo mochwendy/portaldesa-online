@@ -89,6 +89,14 @@ export default function PublicNavbar() {
             )}
             <Link
               to="/admin"
+              onClick={(e) => {
+                // Check if user is authenticated
+                const isAuthenticated = localStorage.getItem('simdesta_auth_token');
+                if (!isAuthenticated) {
+                  e.preventDefault();
+                  window.location.href = '/login?redirect=/admin';
+                }
+              }}
               className="ml-2 flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-white border border-white/30 bg-white/10 hover:bg-white/15 transition-colors"
             >
               <Lock className="w-3.5 h-3.5" /> Admin

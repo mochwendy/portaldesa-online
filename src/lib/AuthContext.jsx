@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
+  const [appPublicSettings, setAppPublicSettings] = useState(null);
 
   useEffect(() => {
     checkAppState();
@@ -34,60 +34,43 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
 
-      // ── Mode mock untuk localhost: langsung set admin, lewati panggilan API. ──
-      if (IS_LOCALHOST) {
-        setUser(MOCK_USER);
-        setIsAuthenticated(true);
-        setIsLoadingAuth(false);
-        setIsLoadingPublicSettings(false);
-        setAuthChecked(true);
-        return;
+      // Check for custom auth token in localStorage
+      const customToken = localStorage.getItem('simdesta_auth_token');
+      const customUser = localStorage.getItem('simdesta_auth_user');
+
+      if (customToken && customUser) {
+        try {
+          const parsedUser = JSON.parse(customUser);
+          setUser(parsedUser);
+          setIsAuthenticated(true);
+          base44.auth.setToken(customToken);
+        } catch (e) {
+          localStorage.removeItem('simdesta_auth_token');
+          localStorage.removeItem('simdesta_auth_user');
+        }
       }
 
       try {
         const publicSettings = await base44.app.getPublicSettings();
         setAppPublicSettings(publicSettings);
+      } catch (appError) {
+        console.warn('Failed to load public settings:', appError);
+      }
 
-        // If we got the app public settings successfully, check if user is authenticated
-        if (appParams.token) {
+      if (!customToken) {
+        // ── Mode mock untuk localhost: langsung set admin, lewati panggilan API. ──
+        if (IS_LOCALHOST && !appParams.token) {
+          setUser(MOCK_USER);
+          setIsAuthenticated(true);
+        } else if (appParams.token) {
           await checkUserAuth();
         } else {
-          setIsLoadingAuth(false);
           setIsAuthenticated(false);
-          setAuthChecked(true);
         }
-        setIsLoadingPublicSettings(false);
-      } catch (appError) {
-        console.error('App state check failed:', appError);
-
-        // Handle app-level errors
-        if (appError.status === 403 && appError.data?.extra_data?.reason) {
-          const reason = appError.data.extra_data.reason;
-          if (reason === 'auth_required') {
-            setAuthError({
-              type: 'auth_required',
-              message: 'Authentication required'
-            });
-          } else if (reason === 'user_not_registered') {
-            setAuthError({
-              type: 'user_not_registered',
-              message: 'User not registered for this app'
-            });
-          } else {
-            setAuthError({
-              type: reason,
-              message: appError.message
-            });
-          }
-        } else {
-          setAuthError({
-            type: 'unknown',
-            message: appError.message || 'Failed to load app'
-          });
-        }
-        setIsLoadingPublicSettings(false);
-        setIsLoadingAuth(false);
       }
+      setIsLoadingAuth(false);
+      setIsLoadingPublicSettings(false);
+      setAuthChecked(true);
     } catch (error) {
       console.error('Unexpected error:', error);
       setAuthError({
@@ -100,8 +83,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const checkUserAuth = async () => {
-    // ── Mode mock untuk localhost ──
-    if (IS_LOCALHOST) {
+    if (IS_LOCALHOST && !appParams.token) {
       setUser(MOCK_USER);
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
@@ -110,7 +92,6 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      // Now check if the user is authenticated
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
       setUser(currentUser);
@@ -123,7 +104,6 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
       setAuthChecked(true);
 
-      // If user auth fails, it might be an expired token
       if (error.status === 401 || error.status === 403) {
         setAuthError({
           type: 'auth_required',
@@ -133,21 +113,78 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const login = async (emailOrUsername, password) => {
+    setAuthError(null);
+    try {
+      const akunList = await base44.entities.AkunAkses.list({ sort: 'nama', limit: 500 });
+      const akunRows = Array.isArray(akunList) ? akunList : (akunList?.items || []);
+
+      const input = emailOrUsername.trim().toLowerCase();
+      const matched = akunRows.find((a) => 
+        (a.email || '').toLowerCase() === input || 
+        (a.username || '').toLowerCase() === input
+      );
+
+      if (!matched) {
+        throw new Error('Email atau username tidak terdaftar di sistem.');
+      }
+
+      if ((matched.status || 'Aktif') !== 'Aktif') {
+        throw new Error('Akun ini dinonaktifkan. Hubungi administrator.');
+      }
+
+      const hasPassword = matched.password && matched.password.length > 0;
+      const DEFAULT_PASSWORD = 'tagogapu123';
+      const providedPassword = password.trim();
+      
+      let isValid = false;
+      if (hasPassword) {
+        isValid = providedPassword === matched.password;
+      } else {
+        isValid = providedPassword === DEFAULT_PASSWORD;
+      }
+
+      if (!isValid) {
+        throw new Error(hasPassword ? 'Kata sandi salah.' : `Kata sandi salah. Default: ${DEFAULT_PASSWORD}`);
+      }
+
+      const userObj = {
+        id: matched.id,
+        email: matched.email,
+        full_name: matched.nama,
+        role: matched.role,
+        grup_kode: matched.grup_kode,
+        jabatan: matched.jabatan,
+      };
+
+      const token = 'simdesta-token-' + matched.id + '-' + Date.now();
+      localStorage.setItem('simdesta_auth_token', token);
+      localStorage.setItem('simdesta_auth_user', JSON.stringify(userObj));
+      base44.auth.setToken(token);
+
+      setUser(userObj);
+      setIsAuthenticated(true);
+      
+      return { success: true, user: userObj };
+    } catch (err) {
+      throw err;
+    }
+  };
+
   const logout = (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
+    localStorage.removeItem('simdesta_auth_token');
+    localStorage.removeItem('simdesta_auth_user');
 
     if (shouldRedirect) {
-      // Use the SDK's logout method which handles token cleanup and redirect
       base44.auth.logout(window.location.href);
     } else {
-      // Just remove the token without redirect
       base44.auth.logout();
     }
   };
 
   const navigateToLogin = () => {
-    // Use the SDK's redirectToLogin method
     base44.auth.redirectToLogin(window.location.href);
   };
 
@@ -163,7 +200,8 @@ export const AuthProvider = ({ children }) => {
       logout,
       navigateToLogin,
       checkUserAuth,
-      checkAppState
+      checkAppState,
+      login
     }}>
       {children}
     </AuthContext.Provider>

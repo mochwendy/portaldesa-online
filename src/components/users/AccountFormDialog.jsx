@@ -10,10 +10,10 @@ import { Label } from '@/components/ui/label';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { AlertCircle, Loader2, Save, UserPlus } from 'lucide-react';
+import { AlertCircle, Loader2, Save, UserPlus, Key, Eye, EyeOff } from 'lucide-react';
 
 const EMPTY = {
-  nama: '', email: '', username: '', grup_kode: '', jabatan: '', status: 'Aktif',
+  nama: '', email: '', username: '', password: '', grup_kode: '', jabatan: '', status: 'Aktif',
 };
 
 const USERNAME_PATTERN = /^[a-z0-9._-]{3,}$/;
@@ -33,6 +33,7 @@ export default function AccountFormDialog({ open, onOpenChange, account, onSaved
       nama: account.nama || '',
       email: account.email || '',
       username: account.username || '',
+      password: account.password || '',
       grup_kode: account.grup_kode || '',
       jabatan: account.jabatan || '',
       status: account.status || 'Aktif',
@@ -40,7 +41,7 @@ export default function AccountFormDialog({ open, onOpenChange, account, onSaved
 
     setLoadingGroups(true);
     base44.entities.UserGroup.list({ sort: 'urutan', limit: 100 })
-      .then((res) => setGroups(res?.items || []))
+      .then((res) => setGroups(Array.isArray(res) ? res : []))
       .catch(() => setGroups([]))
       .finally(() => setLoadingGroups(false));
 
@@ -75,6 +76,14 @@ export default function AccountFormDialog({ open, onOpenChange, account, onSaved
       return setError('Akun Anda sendiri harus tetap berstatus Aktif.');
     }
 
+    // Password validation
+    if (!account && form.password && form.password.length < 8) {
+      return setError('Kata sandi minimal 8 karakter.');
+    }
+    if (form.password && form.password !== form.passwordConfirm) {
+      return setError('Konfirmasi kata sandi tidak sama.');
+    }
+
     setSaving(true);
     try {
       const payload = {
@@ -85,6 +94,7 @@ export default function AccountFormDialog({ open, onOpenChange, account, onSaved
         grup_kode: form.grup_kode,
         jabatan: form.jabatan.trim(),
         status: form.status,
+        password: form.password || undefined,
       };
 
       if (account) {
@@ -184,6 +194,65 @@ export default function AccountFormDialog({ open, onOpenChange, account, onSaved
                 placeholder="contoh: kaur.keuangan"
                 className="lowercase"
               />
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="password-akun">Kata Sandi</Label>
+              <div className="relative">
+                <Input
+                  id="password-akun"
+                  type={form.showPassword ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={(e) => set('password', e.target.value)}
+                  placeholder={account ? 'Kosongkan jika tidak diubah' : 'Minimal 8 karakter'}
+                  className="pr-10 h-12"
+                  autoComplete={account ? 'off' : 'new-password'}
+                />
+                <button
+                  type="button"
+                  onClick={() => set('showPassword', !form.showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={form.showPassword ? 'Sembunyikan' : 'Tampilkan'}
+                >
+                  {form.showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              {form.password && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Key className="w-3 h-3" />
+                  Akan di-hash & disimpan untuk login
+                </p>
+              )}
+              {!form.password && !account && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Key className="w-3 h-3" />
+                  Kosongkan untuk menggunakan default: <code className="bg-muted px-1.5 py-0.5 rounded text-primary font-mono text-xs">tagogapu123</code>
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password-confirm">Konfirmasi Kata Sandi</Label>
+              <div className="relative">
+                <Input
+                  id="password-confirm"
+                  type={form.showPassword ? 'text' : 'password'}
+                  value={form.passwordConfirm || ''}
+                  onChange={(e) => set('passwordConfirm', e.target.value)}
+                  placeholder="Ulangi kata sandi"
+                  className="pr-10 h-12"
+                  autoComplete={account ? 'off' : 'new-password'}
+                />
+                <button
+                  type="button"
+                  onClick={() => set('showPassword', !form.showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={form.showPassword ? 'Sembunyikan' : 'Tampilkan'}
+                >
+                  {form.showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
           </div>
 

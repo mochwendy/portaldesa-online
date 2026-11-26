@@ -33,8 +33,8 @@ export default function UserAccounts() {
       ]);
 
       const akunData = akunRes.status === 'fulfilled' ? (akunRes.value || {}) : {};
-      const akunItems = akunData || [];
-      const groupItems = groupRes.status === 'fulfilled' ? (groupRes.value || []) : [];
+      const akunItems = Array.isArray(akunData?.items) ? akunData.items : [];
+      const groupItems = groupRes.status === 'fulfilled' ? (Array.isArray(groupRes.value) ? groupRes.value : []) : [];
       const currentUser = meRes.status === 'fulfilled' ? meRes.value : null;
 
       setRows(akunItems);

@@ -160,6 +160,7 @@ export default async function (req: Request): Promise<Response> {
         grup_kode: grupKode,
         jabatan: String(body.jabatan || '').trim(),
         status: body.status === 'Nonaktif' ? 'Nonaktif' : 'Aktif',
+        password: body.password ? String(body.password).trim() : undefined,
       };
 
       const saved = isCreate

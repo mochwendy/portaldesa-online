@@ -345,7 +345,7 @@ const entityNames = [
   'Penduduk', 'Aspirasi', 'Berita', 'Pengumuman', 'PerangkatDesa',
   'ProfilDesa', 'APBDes', 'RealisasiPembangunan', 'UsulanPembangunan',
   'DokumenPembangunan', 'SuratKeterangan', 'UMKM', 'MenuPortal',
-  'AkunAkses', 'UserGroup', 'WebsiteSetting',
+  'AkunAkses', 'UserGroup', 'User', 'WebsiteSetting',
 ];
 
 entityNames.forEach((name) => {
@@ -362,6 +362,8 @@ const functions = {
         return { data: await fetchAspirasiStats() };
       case 'getSuratStats':
         return { data: await fetchSuratStats() };
+      case 'kelolaAkunAkses':
+        return await invokeKelolaAkunAkses(params);
       default:
         console.warn('[base44] unknown function:', funcName);
         return { data: null };
@@ -369,16 +371,68 @@ const functions = {
   },
 };
 
+async function invokeKelolaAkunAkses(params = {}) {
+  const { action, id, ...data } = params;
+  const akunRows = await loadEntityData('AkunAkses');
+  const groupRows = await loadEntityData('UserGroup');
+
+  if (action === 'list') {
+    // Build akun_login map from User entity (email -> user) if available
+    let byEmail = {};
+    try {
+      const userRows = await loadEntityData('User');
+      userRows.forEach((u) => {
+        byEmail[String(u.email || '').toLowerCase()] = { id: u.id, email: u.email };
+      });
+    } catch (e) {
+      // User entity may not exist, continue without it
+    }
+
+    const visible = akunRows.filter((a) => {
+      const group = groupRows.find((g) => g.kode === a.grup_kode);
+      return group ? !group.is_admin : true;
+    });
+
+    return {
+      data: {
+        items: visible.map((a) => ({
+          ...a,
+          akun_login: byEmail[String(a.email || '').toLowerCase()] || null,
+        })),
+        is_super_admin: false,
+      },
+    };
+  }
+
+  // For other actions (save, set-group, delete), return mock success
+  return { data: { ok: true } };
+}
+
 const auth = {
   async me() {
     return MOCK_USER;
   },
   async logout(redirectUrl) {
-    console.log('[base44] auth.logout', redirectUrl);
+    this.setToken(null);
+    if (redirectUrl) window.location.href = redirectUrl;
   },
   redirectToLogin(redirectUrl) {
     console.log('[base44] auth.redirectToLogin', redirectUrl);
     if (redirectUrl) window.location.href = redirectUrl;
+  },
+  setToken(token) {
+    if (token) {
+      localStorage.setItem('base44_token', token);
+      // Also update the appParams if available
+      if (window.appParams) {
+        window.appParams.token = token;
+      }
+    } else {
+      localStorage.removeItem('base44_token');
+      if (window.appParams) {
+        window.appParams.token = null;
+      }
+    }
   },
 };
 

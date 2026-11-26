@@ -4,8 +4,9 @@ import {
   LayoutDashboard, Users, FileText, Wallet, Store,
   Megaphone, Building2, Share2, Menu, ShieldCheck,
   Newspaper, UserCog, Globe, ClipboardList, Navigation, HardHat,
-  ShieldAlert, Loader2, UserRound, MessagesSquare
+  ShieldAlert, Loader2, UserRound, MessagesSquare, LogOut
 } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
 import useAccessPermissions from '@/hooks/useAccessPermissions';
 import AkunBelumTerdaftar from '@/components/admin/AkunBelum Terdaftar';
 import PortalNotifications from '@/components/admin/PortalNotifications';
@@ -154,9 +155,14 @@ export default function Layout() {
               Lihat Portal
             </Link>
             <button
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-orange-100 text-sm font-semibold hover:bg-orange-600 transition-colors shadow-lg w-full justify-center"
+              onClick={() => {
+                const { logout } = useAuth();
+                logout(false);
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-destructive text-destructive text-sm font-semibold hover:bg-destructive/90 transition-colors shadow-lg w-full justify-center"
             >
-              < ShieldCheck className="w-4 h-4" /> Admin
+              <LogOut className="w-4 h-4" />
+              Keluar
             </button>
           </div>
         </div>
