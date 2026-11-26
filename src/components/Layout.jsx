@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import useAccessPermissions from '@/hooks/useAccessPermissions';
-import AkunBelumTerdaftar from '@/components/admin/AkunBelum Terdaftar';
+import AkunBelumTerdaftar from '@/components/admin/AkunBelumTerdaftar';
 import PortalNotifications from '@/components/admin/PortalNotifications';
 
 const navItems = [
