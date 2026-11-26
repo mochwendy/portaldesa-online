@@ -23,13 +23,37 @@ function parseCSV(content) {
   if (!content || typeof content !== 'string') return [];
   const lines = content.split('\n').filter((l) => l && l.trim());
   if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''));
+  const headers = parseCSVLine(lines[0]);
   return lines.slice(1).map((line) => {
-    const values = line.split(',').map((v) => v.trim().replace(/^"|"$/g, ''));
+    const values = parseCSVLine(line);
     const row = {};
     headers.forEach((h, i) => { row[h] = values[i] || ''; });
     return row;
   });
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current);
+  return result.map(v => v.trim());
 }
 
 const entityFileMap = {
