@@ -1,16 +1,17 @@
 import React from 'react';
 import { HardHat, Wallet, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { toNumber } from '@/api/base44Client';
 
 const formatRupiah = (n) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0);
 
 export default function RealisasiStats({ items }) {
   const total = items.length;
-  const totalAnggaran = items.reduce((s, i) => s + (i.anggaran || 0), 0);
-  const totalRealisasi = items.reduce((s, i) => s + (i.realisasi_anggaran || 0), 0);
+  const totalAnggaran = items.reduce((s, i) => s + toNumber(i.anggaran), 0);
+  const totalRealisasi = items.reduce((s, i) => s + toNumber(i.realisasi_anggaran), 0);
   const selesai = items.filter((i) => i.status === 'Selesai').length;
   const avgProgress = total > 0
-    ? Math.round(items.reduce((s, i) => s + (i.persentase_progress || 0), 0) / total)
+    ? Math.round(items.reduce((s, i) => s + toNumber(i.persentase_progress), 0) / total)
     : 0;
 
   const stats = [

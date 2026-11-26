@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, toNumber } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import {
   Users, FileText, Wallet, Store, Share2, TrendingUp,
@@ -50,7 +50,7 @@ export default function Dashboard() {
         setData({
           pendudukStats: pendudukStats || null,
           surat: surat || [],
-          apbdes: apbdes || [],
+          apbdes: Array.isArray(apbdes) ? apbdes : apbdes?.items || [],
           umkm: umkm || [],
           aspirasi: aspirasi || [],
           aspirasiStats: { baru: aspirasiBaru || 0, diproses: aspirasiDiproses || 0, selesai: aspirasiSelesai || 0 },
@@ -82,9 +82,9 @@ export default function Dashboard() {
   const apbdesItems = safeArray(data.apbdes);
   const umkmItems = safeArray(data.umkm);
 
-  const totalPendapatan = apbdesItems.filter((a) => a.jenis === 'Pendapatan').reduce((sum, a) => sum + (a.anggaran || 0), 0);
-  const totalBelanja = apbdesItems.filter((a) => a.jenis === 'Belanja').reduce((sum, a) => sum + (a.anggaran || 0), 0);
-  const totalRealisasi = apbdesItems.filter((a) => a.jenis === 'Belanja').reduce((sum, a) => sum + (a.realisasi || 0), 0);
+  const totalPendapatan = apbdesItems.filter((a) => a.jenis === 'Pendapatan').reduce((sum, a) => sum + toNumber(a.anggaran), 0);
+  const totalBelanja = apbdesItems.filter((a) => a.jenis === 'Belanja').reduce((sum, a) => sum + toNumber(a.anggaran), 0);
+  const totalRealisasi = apbdesItems.filter((a) => a.jenis === 'Belanja').reduce((sum, a) => sum + toNumber(a.realisasi), 0);
   const persentaseRealisasi = totalBelanja > 0 ? Math.round((totalRealisasi / totalBelanja) * 100) : 0;
 
   const formatRupiah = (n) =>
@@ -94,8 +94,9 @@ export default function Dashboard() {
   apbdesItems
     .filter((a) => a.jenis === 'Belanja')
     .forEach((a) => {
-      if (!belanjaByKategori[a.kategori]) belanjaByKategori[a.kategori] = 0;
-      belanjaByKategori[a.kategori] += a.anggaran || 0;
+      const key = a.kategori || 'Lainnya';
+      if (!belanjaByKategori[key]) belanjaByKategori[key] = 0;
+      belanjaByKategori[key] += toNumber(a.anggaran);
     });
   const belanjaChart = Object.entries(belanjaByKategori).map(([name, value]) => ({ name, value }));
 

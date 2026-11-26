@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, toNumber } from '@/api/base44Client';
 import { fetchPublicFileUrl } from '@/lib/publicFiles';
 import { Download, FileText, MapPin, Loader2, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -46,7 +46,7 @@ export default function RencanaPembangunanPublik() {
   }
 
   const approved = usulan.filter(u => ['Disetujui', 'Direalisasi', 'Selesai'].includes(u.status));
-  const totalAnggaran = approved.reduce((s, u) => s + (u.estimasi_anggaran || 0), 0);
+  const totalAnggaran = approved.reduce((s, u) => s + toNumber(u.estimasi_anggaran), 0);
 
   const kategoriData = {};
   approved.forEach(u => { kategoriData[u.kategori] = (kategoriData[u.kategori] || 0) + 1; });
@@ -153,7 +153,7 @@ export default function RencanaPembangunanPublik() {
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-muted-foreground">Estimasi Anggaran</p>
-                        <p className="font-bold text-sm text-primary">{formatRupiah(u.estimasi_anggaran)}</p>
+                        <p className="font-bold text-sm text-primary">{formatRupiah(toNumber(u.estimasi_anggaran))}</p>
                         {u.terkait_apbdes && <span className="text-xs text-emerald-600 font-medium">✓ Selaras APBDes</span>}
                       </div>
                     </div>

@@ -63,11 +63,30 @@ function persistRows(entityName, rows) {
   localStorage.setItem(`_${entityName}`, JSON.stringify(rows));
 }
 
+// Membersihkan string numerik/rupiah/Ribu menjadi Number valid; fallback 0 bila tidak valid.
+function toNumber(val) {
+  if (typeof val === 'number' && Number.isFinite(val)) return val;
+  if (val == null) return 0;
+  const cleaned = String(val).replace(/[^0-9.,-]/g, '').replace(/\./g, '').replace(',', '.');
+  const num = parseFloat(cleaned);
+  return Number.isFinite(num) ? num : 0;
+}
+
 function matchCond(row, key, val) {
   if (val && typeof val === 'object' && val.$regex !== undefined) {
     return String(row[key] || '').toLowerCase().includes(String(val.$regex).toLowerCase());
   }
-  return row[key] === val;
+  // Handle loose equality for numbers (CSV values are strings)
+  if (typeof val === 'number') {
+    return Number(row[key]) === val;
+  }
+  // Handle boolean comparison (CSV may have "true"/"false")
+  if (typeof val === 'boolean') {
+    const rowVal = String(row[key]).toLowerCase();
+    return (val && rowVal === 'true') || (!val && rowVal === 'false');
+  }
+  // Handle string comparison (CSV values are strings)
+  return String(row[key]) === String(val);
 }
 
 function localQuery(rows, query = {}) {
@@ -115,7 +134,13 @@ function createEntityAPI(entityName) {
       const rows = Array.isArray(await loadEntityData(entityName)) ? await loadEntityData(entityName) : [];
       let res = localQuery(rows, query);
       res = sortRows(res, opts.sort);
-      return res;
+      const wantsPagination = opts.limit !== undefined || opts.cursor != null;
+      if (!wantsPagination) return res;
+      const start = opts.cursor != null ? Number(opts.cursor) || 0 : 0;
+      const end = start + opts.limit;
+      const items = res.slice(start, end);
+      const nextCursor = end < res.length ? end : null;
+      return { items, total: res.length, has_more: end < res.length, next_cursor: nextCursor };
     },
     async count(query = {}) {
       const rows = Array.isArray(await loadEntityData(entityName)) ? await loadEntityData(entityName) : [];
@@ -358,6 +383,8 @@ export const base44 = {
   app,
   integrations,
 };
+
+export { toNumber };
 
 export async function fetchEntitiesLocal(entityName) {
   if (IS_LOCALHOST) {

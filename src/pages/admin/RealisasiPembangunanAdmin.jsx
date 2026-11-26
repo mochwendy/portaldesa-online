@@ -38,8 +38,8 @@ export default function RealisasiPembangunanAdmin() {
         base44.entities.RealisasiPembangunan.filter({}, { sort: '-created_date', limit: 100 }),
         base44.entities.ProfilDesa.filter({}, { limit: 1 }),
       ]);
-      setItems(res);
-      if (profilRes.length > 0) setProfilDesa(profilRes[0]);
+      setItems(res.items || []);
+      if (profilRes.items?.length > 0) setProfilDesa(profilRes.items[0]);
     } catch (e) {
       console.error(e);
     } finally {
@@ -88,7 +88,7 @@ export default function RealisasiPembangunanAdmin() {
       {/* Table */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm bg-white rounded-xl shadow-sm overflow-hidden">
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
                 <th className="text-left font-medium px-4 py-3">Kegiatan</th>

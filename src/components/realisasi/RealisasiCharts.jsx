@@ -33,7 +33,7 @@ export default function RealisasiCharts({ items }) {
       <div className="bg-card rounded-2xl border border-border p-6">
         <h3 className="font-bold text-lg mb-1">Progress per Kegiatan</h3>
         <p className="text-sm text-muted-foreground mb-4">Persentase penyelesaian tiap kegiatan</p>
-        <ResponsiveContainer width="100%" height={250}>
+        <ResponsiveContainer width="100%" height={260}>
           <BarChart data={progressData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
             <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-25} textAnchor="end" height={70} interval={0} />
@@ -48,7 +48,7 @@ export default function RealisasiCharts({ items }) {
       <div className="bg-card rounded-2xl border border-border p-6">
         <h3 className="font-bold text-lg mb-1">Distribusi Status</h3>
         <p className="text-sm text-muted-foreground mb-4">Jumlah kegiatan per status pelaksanaan</p>
-        <ResponsiveContainer width="100%" height={250}>
+        <ResponsiveContainer width="100%" height={260}>
           <PieChart>
             <Pie data={statusChart} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} paddingAngle={2}>
               {statusChart.map((entry, i) => (

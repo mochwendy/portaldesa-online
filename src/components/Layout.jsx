@@ -54,10 +54,10 @@ export default function Layout() {
   }
 
   return (
-    <div className="min-h-screen bg-teal-900 flex">
+    <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky top-0 left-0 z-50 h-screen w-72 bg-teal-800 text-teal-100 flex flex-col transition-transform duration-300 ${
+        className={`fixed lg:sticky top-0 left-0 z-50 h-screen w-72 bg-[#0A635D] text-teal-100 flex flex-col transition-transform duration-300 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
@@ -133,8 +133,8 @@ export default function Layout() {
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/10 space-y-3 flex items-center justify-between">
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/5">
+        <div className="p-4 border-t border-white/10 space-y-3 flex flex-col">
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/5 mb-3">
             <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
               <UserRound className="w-4 h-4 text-accent" />
             </div>
@@ -145,16 +145,16 @@ export default function Layout() {
               <p className="text-primary-foreground/55 truncate">{accountLabel} · {roleLabel}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2 w-full">
             <Link
               to="/"
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500 text-orange-100 text-sm font-semibold hover:bg-orange-600 transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500 text-orange-100 text-sm font-semibold hover:bg-orange-600 transition-colors w-full justify-center"
             >
               <Globe className="w-4 h-4 flex-shrink-0" />
               Lihat Portal
             </Link>
             <button
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-orange-100 text-sm font-semibold hover:bg-orange-600 transition-colors shadow-lg"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-orange-100 text-sm font-semibold hover:bg-orange-600 transition-colors shadow-lg w-full justify-center"
             >
               < ShieldCheck className="w-4 h-4" /> Admin
             </button>
@@ -169,7 +169,7 @@ export default function Layout() {
         />
       )}
 
-      <div className="flex-1 min-w-0 flex flex-col">
+      <main className="flex-1 min-w-0 flex flex-col bg-slate-50 min-h-screen text-slate-900">
         <header className="sticky top-0 z-30 bg-card border-b border-border px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={() => setMobileOpen(true)} className="lg:hidden text-primary">
@@ -181,7 +181,7 @@ export default function Layout() {
           <PortalNotifications />
         </header>
 
-        <main className="flex-1 p-4 lg:p-8 max-w-7xl mx-auto w-full">
+        <div className="flex-1 p-4 lg:p-8 max-w-7xl mx-auto w-full">
           {blocked ? (
             <div className="max-w-md mx-auto mt-16 bg-card border border-border rounded-2xl p-8 text-center shadow-sm">
               <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
@@ -202,8 +202,8 @@ export default function Layout() {
           ) : (
             <Outlet />
           )}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

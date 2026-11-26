@@ -1,7 +1,7 @@
 import { FileText } from "lucide-react";
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { base44, fetchEntitiesLocal, fetchFunctionLocal } from '@/api/base44Client';
+import { base44, fetchEntitiesLocal, fetchFunctionLocal, toNumber } from '@/api/base44Client';
 import {
   Users, Store, Wallet, ArrowRight,
   MapPin, MessagesSquare, ShoppingBag, ClipboardList
@@ -47,20 +47,87 @@ export default function Beranda() {
         if (IS_LOCALHOST) {
           // Ambil data penduduk dari CSV
           const pendudukRows = safeArray(await fetchEntitiesLocal('Penduduk'));
+          
+          const genderCounts = {};
+          pendudukRows.forEach((r) => {
+            const g = r.jenis_kelamin || 'Tidak Diketahui';
+            genderCounts[g] = (genderCounts[g] || 0) + 1;
+          });
+          const gender = Object.entries(genderCounts).map(([jenis_kelamin, count]) => ({ jenis_kelamin, count }));
+
+          const usiaCounts = {};
+          pendudukRows.forEach((r) => {
+            const u = r.kelompok_usia || 'Tidak Diketahui';
+            usiaCounts[u] = (usiaCounts[u] || 0) + 1;
+          });
+          const usia = Object.entries(usiaCounts).map(([kelompok_usia, count]) => ({ kelompok_usia, count }));
+
+          const pendidikanCounts = {};
+          pendudukRows.forEach((r) => {
+            const p = r.pendidikan || 'Tidak Diketahui';
+            pendidikanCounts[p] = (pendidikanCounts[p] || 0) + 1;
+          });
+          const pendidikan = Object.entries(pendidikanCounts).map(([pendidikan, count]) => ({ pendidikan, count }));
+
+          const pekerjaanCounts = {};
+          pendudukRows.forEach((r) => {
+            const p = r.pekerjaan || 'Tidak Diketahui';
+            pekerjaanCounts[p] = (pekerjaanCounts[p] || 0) + 1;
+          });
+          const pekerjaan = Object.entries(pekerjaanCounts).map(([pekerjaan, count]) => ({ pekerjaan, count })).slice(0, 10);
+
+          const perkawinanCounts = {};
+          pendudukRows.forEach((r) => {
+            const p = r.status_perkawinan || 'Tidak Diketahui';
+            perkawinanCounts[p] = (perkawinanCounts[p] || 0) + 1;
+          });
+          const perkawinan = Object.entries(perkawinanCounts).map(([status_perkawinan, count]) => ({ status_perkawinan, count }));
+
+          const keluargaCounts = {};
+          pendudukRows.forEach((r) => {
+            const k = r.status_keluarga || 'Tidak Diketahui';
+            keluargaCounts[k] = (keluargaCounts[k] || 0) + 1;
+          });
+          const keluarga = Object.entries(keluargaCounts).map(([status_keluarga, count]) => ({ status_keluarga, count }));
+
+          const agamaCounts = {};
+          pendudukRows.forEach((r) => {
+            const a = r.agama || 'Tidak Diketahui';
+            agamaCounts[a] = (agamaCounts[a] || 0) + 1;
+          });
+          const agama = Object.entries(agamaCounts).map(([agama, count]) => ({ agama, count }));
+
+          const wilayahCounts = {};
+          pendudukRows.forEach((r) => {
+            const rw = r.rw || '';
+            if (rw) wilayahCounts[rw] = (wilayahCounts[rw] || 0) + 1;
+          });
+          const wilayah = Object.entries(wilayahCounts).map(([rw, count]) => ({ rw, count })).sort((a, b) => a.rw.localeCompare(b.rw));
+
+          let usiaProduktif = 0;
+          pendudukRows.forEach((r) => {
+            const k = (r.kelompok_usia || '');
+            const m = k.match(/(\d+)/);
+            if (m && Number(m[1]) >= 15 && Number(m[1]) <= 64) usiaProduktif++;
+          });
+
+          const disabilitas = pendudukRows.filter((r) => (r.disabilitas || '') !== '').length;
+
           const pendudukStats = {
             total: pendudukRows.length,
             lakiLaki: safeNum(pendudukRows.filter((r) => (r.jenis_kelamin || '').toLowerCase() === 'laki-laki').length),
             perempuan: safeNum(pendudukRows.filter((r) => (r.jenis_kelamin || '').toLowerCase() === 'perempuan').length),
             totalKK: safeNum(new Set(pendudukRows.map((r) => r.no_kk).filter((k) => k)).size),
-            usiaProduktif: 0, // akan diisi jika perlu dari CSV
-            gender: [],
-            usia: [],
-            pendidikan: [],
-            pekerjaan: [],
-            perkawinan: [],
-            keluarga: [],
-            agama: [],
-            wilayah: [],
+            usiaProduktif,
+            disabilitas,
+            gender,
+            usia,
+            pendidikan,
+            pekerjaan,
+            perkawinan,
+            keluarga,
+            agama,
+            wilayah,
           };
 
           // Ambil UMKM dari CSV
@@ -72,24 +139,24 @@ export default function Beranda() {
           const apbdesFromCSV = apbdesRows.filter((r) => String(r.tahun_anggaran) === '2026');
           const totalPendapatan = apbdesFromCSV
             .filter((a) => a.jenis === 'Pendapatan')
-            .reduce((s, a) => s + (a.anggaran || 0), 0);
+            .reduce((s, a) => s + toNumber(a.anggaran), 0);
           const totalBelanja = apbdesFromCSV
             .filter((a) => a.jenis === 'Belanja')
-            .reduce((s, a) => s + (a.anggaran || 0), 0);
+            .reduce((s, a) => s + toNumber(a.anggaran), 0);
 
           // Ambil Realisasi dari CSV
           const realisasiRows = safeArray(await fetchEntitiesLocal('RealisasiPembangunan'));
           const withProgress = realisasiRows.map((r) => {
-            const total = r.anggaran || 0;
-            const realisasi = r.realisasi_anggaran || 0;
+            const total = toNumber(r.anggaran);
+            const realisasi = toNumber(r.realisasi_anggaran);
             const pct = r.persentase_progress ?? (total > 0 ? Math.round((realisasi / total) * 100) : 0);
             return { ...r, persentase_progress: pct };
           });
           const rataRata = withProgress.length
-            ? withProgress.reduce((s, r) => s + (r.persentase_progress || 0), 0) / withProgress.length
+            ? withProgress.reduce((s, r) => s + toNumber(r.persentase_progress), 0) / withProgress.length
             : 0;
-          const totalAnggaran = withProgress.reduce((s, r) => s + (r.anggaran || 0), 0);
-          const totalRealisasi = withProgress.reduce((s, r) => s + (r.realisasi_anggaran || 0), 0);
+          const totalAnggaran = withProgress.reduce((s, r) => s + toNumber(r.anggaran), 0);
+          const totalRealisasi = withProgress.reduce((s, r) => s + toNumber(r.realisasi_anggaran), 0);
 
           // Ambil Aspirasi dari CSV
           const aspirasiRows = safeArray(await fetchEntitiesLocal('Aspirasi'));
@@ -190,8 +257,8 @@ export default function Beranda() {
   const umkmItems = safeArray(data.umkm);
   const realisasiItems = safeArray(data.realisasi);
 
-  const totalPendapatan = apbdesItems.filter((a) => a.jenis === 'Pendapatan').reduce((s, a) => s + (a.anggaran || 0), 0);
-  const totalBelanja = apbdesItems.filter((a) => a.jenis === 'Belanja').reduce((s, a) => s + (a.anggaran || 0), 0);
+  const totalPendapatan = apbdesItems.filter((a) => a.jenis === 'Pendapatan').reduce((s, a) => s + toNumber(a.anggaran), 0);
+  const totalBelanja = apbdesItems.filter((a) => a.jenis === 'Belanja').reduce((s, a) => s + toNumber(a.anggaran), 0);
 
   const formatRupiah = (n) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0);

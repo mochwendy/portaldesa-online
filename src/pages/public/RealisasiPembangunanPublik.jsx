@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, toNumber } from '@/api/base44Client';
 import { HardHat, Wallet, TrendingUp, CheckCircle2, MapPin, Calendar } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import RealisasiPhotoGallery from '@/components/realisasi/RealisasiPhotoGallery';
@@ -42,15 +42,15 @@ export default function RealisasiPembangunanPublik() {
     );
   }
 
-  const totalAnggaran = items.reduce((s, i) => s + (i.anggaran || 0), 0);
-  const totalRealisasi = items.reduce((s, i) => s + (i.realisasi_anggaran || 0), 0);
+  const totalAnggaran = items.reduce((s, i) => s + toNumber(i.anggaran), 0);
+  const totalRealisasi = items.reduce((s, i) => s + toNumber(i.realisasi_anggaran), 0);
   const avgProgress = items.length > 0
-    ? Math.round(items.reduce((s, i) => s + (i.persentase_progress || 0), 0) / items.length)
+    ? Math.round(items.reduce((s, i) => s + toNumber(i.persentase_progress), 0) / items.length)
     : 0;
 
   const progressChart = items.map((i) => ({
     name: i.nama_kegiatan?.length > 18 ? i.nama_kegiatan.substring(0, 16) + '…' : i.nama_kegiatan,
-    progress: i.persentase_progress || 0,
+    progress: toNumber(i.persentase_progress),
   }));
 
   return (
@@ -114,7 +114,7 @@ export default function RealisasiPembangunanPublik() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {items.map((item) => {
-              const progress = item.persentase_progress || 0;
+              const progress = toNumber(item.persentase_progress);
               return (
                 <div key={item.id} className="bg-card rounded-xl border border-border overflow-hidden">
                   <div className="p-5">
@@ -131,12 +131,12 @@ export default function RealisasiPembangunanPublik() {
                     <div className="grid grid-cols-2 gap-3 mb-4">
                       <div className="bg-muted/50 rounded-lg p-2.5">
                         <p className="text-xs text-muted-foreground">Anggaran</p>
-                        <p className="font-bold text-sm text-foreground">{formatRupiah(item.anggaran)}</p>
+                        <p className="font-bold text-sm text-foreground">{formatRupiah(toNumber(item.anggaran))}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">Sumber: {item.sumber_dana}</p>
                       </div>
                       <div className="bg-muted/50 rounded-lg p-2.5">
                         <p className="text-xs text-muted-foreground">Realisasi</p>
-                        <p className="font-bold text-sm text-foreground">{formatRupiah(item.realisasi_anggaran)}</p>
+                        <p className="font-bold text-sm text-foreground">{formatRupiah(toNumber(item.realisasi_anggaran))}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">Pelaksana: {item.pelaksana || '-'}</p>
                       </div>
                     </div>

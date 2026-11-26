@@ -22,8 +22,8 @@ export default function MenuPortalAdmin() {
 
   const load = useCallback(async () => {
     try {
-      const items = await base44.entities.MenuPortal.filter({}, { sort: 'urutan', limit: 100 });
-      setMenus(items);
+      const res = await base44.entities.MenuPortal.filter({}, { sort: 'urutan', limit: 100 });
+      setMenus(res.items || []);
     } catch (e) {
       console.error(e);
     } finally {

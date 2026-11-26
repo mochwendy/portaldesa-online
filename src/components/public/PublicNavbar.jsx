@@ -27,9 +27,9 @@ export default function PublicNavbar() {
       { published: true, kategori: 'menu_utama' },
       { sort: 'urutan', limit: 50 }
     )
-      .then((items) => {
-        if (items && items.length > 0) {
-          setNavItems(items.map((m) => ({
+      .then((result) => {
+        if (result && result.items && result.items.length > 0) {
+          setNavItems(result.items.map((m) => ({
             to: m.path,
             label: m.label,
             end: m.path === '/',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, toNumber } from '@/api/base44Client';
 import {
   Wallet, TrendingUp, TrendingDown, Filter, Plus, X, Pencil, Trash2
 } from 'lucide-react';
@@ -44,7 +44,7 @@ export default function TransparansiAPBDes() {
     setLoading(true);
     try {
       const data = await base44.entities.APBDes.filter({ tahun_anggaran: 2026 });
-      setRecords(data);
+      setRecords(Array.isArray(data) ? data : data?.items || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -53,23 +53,23 @@ export default function TransparansiAPBDes() {
 
   const filtered = filterJenis === 'all' ? records : records.filter((r) => r.jenis === filterJenis);
 
-  const totalPendapatan = records.filter((r) => r.jenis === 'Pendapatan').reduce((s, r) => s + (r.anggaran || 0), 0);
-  const totalBelanja = records.filter((r) => r.jenis === 'Belanja').reduce((s, r) => s + (r.anggaran || 0), 0);
-  const totalRealisasi = records.filter((r) => r.jenis === 'Belanja').reduce((s, r) => s + (r.realisasi || 0), 0);
+  const totalPendapatan = records.filter((r) => r.jenis === 'Pendapatan').reduce((s, r) => s + toNumber(r.anggaran), 0);
+  const totalBelanja = records.filter((r) => r.jenis === 'Belanja').reduce((s, r) => s + toNumber(r.anggaran), 0);
+  const totalRealisasi = records.filter((r) => r.jenis === 'Belanja').reduce((s, r) => s + toNumber(r.realisasi), 0);
   const persentase = totalBelanja > 0 ? Math.round((totalRealisasi / totalBelanja) * 100) : 0;
 
   const pendapatanByKategori = {};
   records.filter((r) => r.jenis === 'Pendapatan').forEach((r) => {
     if (!pendapatanByKategori[r.kategori]) pendapatanByKategori[r.kategori] = 0;
-    pendapatanByKategori[r.kategori] += r.anggaran || 0;
+    pendapatanByKategori[r.kategori] += toNumber(r.anggaran);
   });
   const pendapatanChart = Object.entries(pendapatanByKategori).map(([name, value]) => ({ name, value }));
 
   const belanjaByKategori = {};
   records.filter((r) => r.jenis === 'Belanja').forEach((r) => {
     if (!belanjaByKategori[r.kategori]) belanjaByKategori[r.kategori] = { anggaran: 0, realisasi: 0 };
-    belanjaByKategori[r.kategori].anggaran += r.anggaran || 0;
-    belanjaByKategori[r.kategori].realisasi += r.realisasi || 0;
+    belanjaByKategori[r.kategori].anggaran += toNumber(r.anggaran);
+    belanjaByKategori[r.kategori].realisasi += toNumber(r.realisasi);
   });
   const belanjaChart = Object.entries(belanjaByKategori).map(([name, v]) => ({
     name, Anggaran: v.anggaran, Realisasi: v.realisasi

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, toNumber } from '@/api/base44Client';
 import { Wallet, TrendingUp, TrendingDown, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -22,22 +22,23 @@ export default function TransparansiAPBDesPublik() {
     (async () => {
       try {
         const data = await base44.entities.APBDes.filter({ tahun_anggaran: 2026 });
-        setRecords(Array.isArray(data) ? data : []);
+        setRecords(Array.isArray(data) ? data : data?.items || []);
+        console.log("APBDes data loaded:", records.length);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
     })();
   }, []);
 
-  const totalPendapatan = records.filter((a) => a.jenis === 'Pendapatan').reduce((s, a) => s + (a.anggaran || 0), 0);
-  const totalBelanja = records.filter((a) => a.jenis === 'Belanja').reduce((s, a) => s + (a.anggaran || 0), 0);
-  const totalRealisasi = records.filter((a) => a.jenis === 'Belanja').reduce((s, a) => s + (a.realisasi || 0), 0);
+  const totalPendapatan = records.filter((a) => a.jenis === 'Pendapatan').reduce((s, a) => s + toNumber(a.anggaran), 0);
+  const totalBelanja = records.filter((a) => a.jenis === 'Belanja').reduce((s, a) => s + toNumber(a.anggaran), 0);
+  const totalRealisasi = records.filter((a) => a.jenis === 'Belanja').reduce((s, a) => s + toNumber(a.realisasi), 0);
   const persentase = totalBelanja > 0 ? Math.round((totalRealisasi / totalBelanja) * 100) : 0;
 
   const belanjaByKategori = {};
   records.filter((a) => a.jenis === 'Belanja').forEach((a) => {
     if (!belanjaByKategori[a.kategori]) belanjaByKategori[a.kategori] = { anggaran: 0, realisasi: 0 };
-    belanjaByKategori[a.kategori].anggaran += a.anggaran || 0;
-    belanjaByKategori[a.kategori].realisasi += a.realisasi || 0;
+    belanjaByKategori[a.kategori].anggaran += toNumber(a.anggaran);
+    belanjaByKategori[a.kategori].realisasi += toNumber(a.realisasi);
   });
   const chartData = Object.entries(belanjaByKategori).map(([name, v]) => ({ name, Anggaran: v.anggaran, Realisasi: v.realisasi }));
 

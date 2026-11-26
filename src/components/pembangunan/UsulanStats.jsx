@@ -1,5 +1,6 @@
 import React from 'react';
 import { ClipboardList, CheckCircle2, Clock, Search, TrendingUp, Wallet } from 'lucide-react';
+import { toNumber } from '@/api/base44Client';
 
 const formatRupiah = (n) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0);
@@ -10,7 +11,7 @@ export default function UsulanStats({ usulan }) {
   const diverifikasi = usulan.filter(u => u.status === 'Diverifikasi').length;
   const disetujui = usulan.filter(u => u.status === 'Disetujui').length;
   const masukAnggaran = usulan.filter(u => u.status === 'Masuk Anggaran').length;
-  const totalAnggaran = usulan.filter(u => u.status !== 'Ditolak').reduce((s, u) => s + (u.estimasi_anggaran || 0), 0);
+  const totalAnggaran = usulan.filter(u => u.status !== 'Ditolak').reduce((s, u) => s + toNumber(u.estimasi_anggaran), 0);
 
   const stats = [
     { icon: ClipboardList, label: 'Total Usulan', value: total, color: 'text-primary', bg: 'bg-primary/10' },

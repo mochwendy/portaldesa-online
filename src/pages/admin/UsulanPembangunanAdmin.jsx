@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44, toNumber } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Plus, Wallet, TrendingUp, AlertCircle } from 'lucide-react';
 import UsulanStats from '@/components/pembangunan/UsulanStats';
@@ -65,9 +65,9 @@ export default function UsulanPembangunanAdmin() {
     await base44.entities.UsulanPembangunan.update(id, { status }); loadData();
   };
 
-  const totalAnggaranUsulan = usulan.filter(u => u.status !== 'Ditolak').reduce((s, u) => s + (u.estimasi_anggaran || 0), 0);
+  const totalAnggaranUsulan = usulan.filter(u => u.status !== 'Ditolak').reduce((s, u) => s + toNumber(u.estimasi_anggaran), 0);
   const apbdesItems = safeArray(apbdes);
-  const totalBelanjaAPBDes = apbdesItems.filter(a => a.jenis === 'Belanja').reduce((s, a) => s + (a.anggaran || 0), 0);
+  const totalBelanjaAPBDes = apbdesItems.filter(a => a.jenis === 'Belanja').reduce((s, a) => s + toNumber(a.anggaran), 0);
   const persentaseSelaras = totalBelanjaAPBDes > 0 ? Math.min(100, Math.round((totalAnggaranUsulan / totalBelanjaAPBDes) * 100)) : 0;
 
   if (loading) {
@@ -140,15 +140,17 @@ export default function UsulanPembangunanAdmin() {
             </div>
           </div>
 
-          <UsulanTable
-            usulan={filteredUsulan}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onStatusChange={handleStatusChange}
-            onDetail={handleDetail}
-            filters={filters}
-            onFilterChange={setFilters}
-          />
+          <div className="bg-card rounded-xl border border-border p-5">
+            <UsulanTable
+              usulan={filteredUsulan}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onStatusChange={handleStatusChange}
+              onDetail={handleDetail}
+              filters={filters}
+              onFilterChange={setFilters}
+            />
+          </div>
         </>
       ) : (
         <DokumenManager dokumen={dokumen} onRefresh={loadData} />

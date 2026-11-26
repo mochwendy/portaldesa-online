@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { HardHat, Wallet, TrendingUp, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { toNumber } from '@/api/base44Client';
 
 const formatRupiah = (n) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0);
@@ -15,8 +16,8 @@ const STATUS_STYLES = {
 
 export default function BerandaRealisasi({ items = [] }) {
   const total = items.length;
-  const totalAnggaran = items.reduce((s, i) => s + (i.anggaran || 0), 0);
-  const totalRealisasi = items.reduce((s, i) => s + (i.realisasi_anggaran || 0), 0);
+  const totalAnggaran = items.reduce((s, i) => s + toNumber(i.anggaran), 0);
+  const totalRealisasi = items.reduce((s, i) => s + toNumber(i.realisasi_anggaran), 0);
   const selesai = items.filter((i) => i.status === 'Selesai').length;
 
   const stats = [
@@ -62,15 +63,15 @@ export default function BerandaRealisasi({ items = [] }) {
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Progress fisik</span>
-                  <span className="font-bold">{i.persentase_progress || 0}%</span>
+                  <span className="font-bold">{toNumber(i.persentase_progress)}%</span>
                 </div>
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${i.persentase_progress || 0}%` }} />
+                  <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${toNumber(i.persentase_progress)}%` }} />
                 </div>
               </div>
               <div className="flex items-center justify-between text-xs mt-4 pt-3 border-t border-border">
                 <span className="text-muted-foreground">Anggaran</span>
-                <span className="font-semibold">{formatRupiah(i.anggaran)}</span>
+                <span className="font-semibold">{formatRupiah(toNumber(i.anggaran))}</span>
               </div>
             </Link>
           ))}
