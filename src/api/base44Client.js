@@ -52,9 +52,15 @@ const entityFileMap = {
 };
 
 async function loadEntityData(entityName) {
+  const local = localStorage.getItem(`_${entityName}`);
+  if (local) return JSON.parse(local);
   const filename = entityFileMap[entityName] || `${entityName}_export.csv`;
   const text = await fetchCSV(filename);
   return parseCSV(text);
+}
+
+function persistRows(entityName, rows) {
+  localStorage.setItem(`_${entityName}`, JSON.stringify(rows));
 }
 
 function matchCond(row, key, val) {
@@ -119,9 +125,34 @@ function createEntityAPI(entityName) {
       const rows = Array.isArray(await loadEntityData(entityName)) ? await loadEntityData(entityName) : [];
       return rows.find((r) => r.id === id) || null;
     },
-    async create(data) { return { ...data, id: crypto.randomUUID() }; },
-    async update(id, data) { return { ...data, id }; },
-    async delete() { return { success: true }; },
+    async create(data) {
+      const rows = Array.isArray(await loadEntityData(entityName)) ? await loadEntityData(entityName) : [];
+      const id = crypto.randomUUID();
+      const row = { ...data, id };
+      rows.push(row);
+      persistRows(entityName, rows);
+      return row;
+    },
+    async update(id, data) {
+      const rows = Array.isArray(await loadEntityData(entityName)) ? await loadEntityData(entityName) : [];
+      const idx = rows.findIndex((r) => r.id === id);
+      if (idx >= 0) {
+        rows[idx] = { ...rows[idx], ...data, id };
+        persistRows(entityName, rows);
+        return rows[idx];
+      }
+      const row = { ...data, id };
+      rows.push(row);
+      persistRows(entityName, rows);
+      return row;
+    },
+    async delete(id) {
+      const rows = Array.isArray(await loadEntityData(entityName)) ? await loadEntityData(entityName) : [];
+      const idx = rows.findIndex((r) => r.id === id);
+      if (idx >= 0) rows.splice(idx, 1);
+      persistRows(entityName, rows);
+      return { success: true };
+    },
     async aggregate({ groupBy } = {}) {
       const rows = await loadEntityData(entityName);
       const counts = {};
@@ -309,11 +340,23 @@ const app = {
   },
 };
 
+const integrations = {
+  Core: {
+    async CreateFileSignedUrl({ file_uri, expires_in }) {
+      return { signed_url: `/data/files/${file_uri}` };
+    },
+    async UploadPrivateFile({ file }) {
+      return { file_uri: file.name || 'uploaded-file' };
+    },
+  },
+};
+
 export const base44 = {
   entities,
   functions,
   auth,
   app,
+  integrations,
 };
 
 export async function fetchEntitiesLocal(entityName) {

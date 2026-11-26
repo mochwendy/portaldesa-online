@@ -50,7 +50,7 @@ export default function AspirasiAdmin() {
         base44.entities.Aspirasi.count({ status: 'Diproses' }),
         base44.entities.Aspirasi.count({ status: 'Selesai' }),
       ]);
-      setItems(page.items || []);
+      setItems(page || []);
       setStats({ total, baru, diproses, selesai });
     } catch (e) {
       console.error(e);

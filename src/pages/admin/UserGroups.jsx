@@ -21,7 +21,7 @@ export default function UserGroups() {
     setLoading(true);
     try {
       const res = await base44.entities.UserGroup.list({ sort: 'urutan', limit: 100 });
-      setGroups(res.items || []);
+      setGroups(res || []);
     } finally {
       setLoading(false);
     }

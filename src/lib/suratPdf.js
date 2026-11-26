@@ -6,6 +6,7 @@ import { buildLetterHtml } from '@/lib/suratDocument';
 import { buatQrSurat } from '@/lib/suratVerifikasi';
 import { loadKop } from '@/lib/suratKop';
 import { findTemplate, buildVars, fillTemplate } from '@/lib/suratTemplates';
+import { safeJsonParse } from '@/utils';
 
 const PAGE_W = 215;
 const PAGE_H = 330;
@@ -25,7 +26,7 @@ async function isiSurat(record, profil) {
   if (!template) return '';
   const penduduk = (await base44.entities.Penduduk.filter({ nik: record.nik_pemohon }))[0];
   if (!penduduk) return '';
-  const extras = record.extras_json ? JSON.parse(record.extras_json) : {};
+  const extras = safeJsonParse(record.extras_json, {});
   return fillTemplate(template.body, buildVars(penduduk, profil, extras, record.keperluan || ''));
 }
 

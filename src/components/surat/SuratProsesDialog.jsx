@@ -8,6 +8,7 @@ import SuratPenandatanganTab from './SuratPenandatanganTab';
 import SuratKopTab from './SuratKopTab';
 import SuratEditor from './SuratEditor';
 import { findTemplate, buildVars, fillTemplate, SURAT_NAMES } from '@/lib/suratTemplates';
+import { safeJsonParse } from '@/utils';
 import { buildLetterHtml, printLetter } from '@/lib/suratDocument';
 import { buatKodeVerifikasi, buatQrSurat } from '@/lib/suratVerifikasi';
 import { kirimNotifikasiSelesai } from '@/lib/suratWaSelesai';
@@ -59,7 +60,7 @@ export default function SuratProsesDialog({ open, onOpenChange, record, nomorBar
         keperluan: record.keperluan || '', telp: record.no_telepon || '', pejabatId: record.pejabat_id || '',
         atasNama: !!record.atas_nama, tipeTtd: record.tipe_ttd || 'Manual',
         tanggalSurat: record.tanggal_surat || today(),
-        extras: record.extras_json ? JSON.parse(record.extras_json) : {},
+        extras: safeJsonParse(record.extras_json, {}),
       });
     }
     setS(base);

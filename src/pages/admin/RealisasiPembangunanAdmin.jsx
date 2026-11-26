@@ -38,8 +38,8 @@ export default function RealisasiPembangunanAdmin() {
         base44.entities.RealisasiPembangunan.filter({}, { sort: '-created_date', limit: 100 }),
         base44.entities.ProfilDesa.filter({}, { limit: 1 }),
       ]);
-      setItems(res.items);
-      if (profilRes.items?.length > 0) setProfilDesa(profilRes.items[0]);
+      setItems(res);
+      if (profilRes.length > 0) setProfilDesa(profilRes[0]);
     } catch (e) {
       console.error(e);
     } finally {
