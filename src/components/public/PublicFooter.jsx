@@ -83,6 +83,10 @@ export default function PublicFooter() {
                   <span>{settings.footer_email}</span>
                 </li>
               )}
+              <li className="flex items-start gap-2">
+                <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5 text-accent" />
+                <span className="whitespace-pre-line">Kantor Desa Tagog Apu, Kec. Padalarang, Kab. Bandung Barat</span>
+              </li>
             </ul>
           </div>
         </div>

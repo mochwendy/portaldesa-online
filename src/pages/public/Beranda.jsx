@@ -13,11 +13,9 @@ import PendudukCharts from '@/components/penduduk/PendudukCharts';
 import useWebsiteSettings from '@/hooks/useWebsiteSettings';
 import { IS_LOCALHOST } from '@/api/base44Client';
 
-// Fungsi bantu untuk memastikan nilai adalah array
 const safeArray = (val) => (Array.isArray(val) ? val : []);
 const safeNum = (val) => (val != null ? val : 0);
 
-// Satu bagian gagal tidak boleh mengosongkan seluruh beranda, termasuk bagi pengunjung tanpa login.
 const safe = async (fn, fallback) => {
   try {
     return await fn();
@@ -43,9 +41,7 @@ export default function Beranda() {
   useEffect(() => {
     (async () => {
       try {
-        // Di localhost: ambil data dari CSV langsung, lewati Base44 SDK
         if (IS_LOCALHOST) {
-          // Ambil data penduduk dari CSV
           const pendudukRows = safeArray(await fetchEntitiesLocal('Penduduk'));
           
           const genderCounts = {};
@@ -130,21 +126,12 @@ export default function Beranda() {
             wilayah,
           };
 
-          // Ambil UMKM dari CSV
           const umkmRows = safeArray(await fetchEntitiesLocal('UMKM'));
           const umkmData = umkmRows.filter((r) => (r.status || '').toLowerCase() === 'aktif');
 
-          // Ambil APBDes dari CSV
           const apbdesRows = safeArray(await fetchEntitiesLocal('APBDes'));
           const apbdesFromCSV = apbdesRows.filter((r) => String(r.tahun_anggaran) === '2026');
-          const totalPendapatan = apbdesFromCSV
-            .filter((a) => a.jenis === 'Pendapatan')
-            .reduce((s, a) => s + toNumber(a.anggaran), 0);
-          const totalBelanja = apbdesFromCSV
-            .filter((a) => a.jenis === 'Belanja')
-            .reduce((s, a) => s + toNumber(a.anggaran), 0);
 
-          // Ambil Realisasi dari CSV
           const realisasiRows = safeArray(await fetchEntitiesLocal('RealisasiPembangunan'));
           const withProgress = realisasiRows.map((r) => {
             const total = toNumber(r.anggaran);
@@ -152,13 +139,7 @@ export default function Beranda() {
             const pct = r.persentase_progress ?? (total > 0 ? Math.round((realisasi / total) * 100) : 0);
             return { ...r, persentase_progress: pct };
           });
-          const rataRata = withProgress.length
-            ? withProgress.reduce((s, r) => s + toNumber(r.persentase_progress), 0) / withProgress.length
-            : 0;
-          const totalAnggaran = withProgress.reduce((s, r) => s + toNumber(r.anggaran), 0);
-          const totalRealisasi = withProgress.reduce((s, r) => s + toNumber(r.realisasi_anggaran), 0);
 
-          // Ambil Aspirasi dari CSV
           const aspirasiRows = safeArray(await fetchEntitiesLocal('Aspirasi'));
           const countByStatus = {};
           aspirasiRows.forEach((r) => {
@@ -175,7 +156,6 @@ export default function Beranda() {
             kategori: {},
           };
 
-          // Ambil Surat dari CSV
           const suratRows = safeArray(await fetchEntitiesLocal('SuratKeterangan'));
           const countByStatus2 = {};
           suratRows.forEach((r) => {
@@ -191,7 +171,6 @@ export default function Beranda() {
             ditolak: countByStatus2['Ditolak'] || 0,
           };
 
-          // Ambil Profil dari CSV
           const profilRows = safeArray(await fetchEntitiesLocal('ProfilDesa'));
           const profil = profilRows.length > 0 ? profilRows[0] : null;
 
@@ -205,7 +184,6 @@ export default function Beranda() {
             realisasi: safeArray(withProgress),
           });
         } else {
-          // Produksi: gunakan Base44 SDK (code asli)
           const [profil, aspirasiStats, suratStats, pendudukStats, umkm, apbdes, realisasi] = await Promise.all([
             safe(() => base44.entities.ProfilDesa.list({ sort: '-created_date', limit: 1 }), []),
             safe(() => base44.functions.invoke('getAspirasiStats').then((res) => res.data), null),
@@ -216,7 +194,6 @@ export default function Beranda() {
             safe(() => base44.entities.RealisasiPembangunan.list({ sort: '-created_date', limit: 50 }), []),
           ]);
 
-          // Jika API gagal (null/empty), fallback ke CSV lokal
           const profilData = safeArray(listOf(profil))[0] || await safe(() => fetchEntitiesLocal('ProfilDesa'), null);
           const umkmData = safeArray(listOf(umkm)).length > 0 ? safeArray(umkm) : await safe(() => fetchEntitiesLocal('UMKM'), []);
           const apbdesFromAPI = safeArray(listOf(apbdes));
@@ -243,7 +220,7 @@ export default function Beranda() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="w-8 h-8 border-4 border-teal-800 border-t-orange-500 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-teal-600 border-t-amber-500 rounded-full animate-spin" />
       </div>
     );
   }
@@ -271,36 +248,30 @@ export default function Beranda() {
   ];
 
   return (
-    <div>
-      {/* Hero */}
-      <section className="relative h-[520px] flex items-center overflow-hidden bg-[#0A635D]">
-        <div className="absolute inset-0 bg-[#0B6B64]/88" />
-        <img
-          src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1600&q=80"
-          alt="Pemandangan Desa"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0" />
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-6">
+    <div className="bg-slate-50 min-h-screen">
+      <div className="flex flex-col space-y-6 md:space-y-12">
+        {/* Hero */}
+        <section className="relative py-8 md:py-16 bg-gradient-to-br from-sky-50 via-teal-50/60 to-white overflow-hidden border-b border-slate-200">
+          <div className="max-w-7xl mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
-            <p className="text-[#E59824] font-semibold text-sm uppercase tracking-wider mb-2">
-              SELAMAT DATANG DI PORTAL LAYANAN DIGITAL
-            </p>
-            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3 text-white">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-teal-100 text-teal-800 text-xs font-semibold uppercase tracking-wider mb-4 shadow-sm">
+              PORTAL DIGITAL RESMI DESA
+            </span>
+            <h1 className="text-2xl sm:text-3xl md:text-5xl font-extrabold tracking-tight mb-4 text-slate-900">
               Desa Tagog Apu
             </h1>
-            <p className="text-white/90 text-base md:text-lg max-w-2xl mb-6 mx-auto">
-              Mari Kita Sambut Era Baru Pelayanan Publik Pemerintah Desa Tagogapu
+            <p className="text-slate-600 text-xs sm:text-sm md:text-base max-w-2xl mb-6 mx-auto leading-relaxed">
+              Smart Society — Menghadirkan kemudahan pelayanan administrasi, transparansi anggaran, dan pemberdayaan ekonomi warga dalam satu genggaman.
             </p>
             <div className="flex flex-wrap gap-3 justify-center">
-              <Link to="/layanan-surat" className="inline-flex items-center gap-2 bg-[#E59824] text-slate-900 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#E59824]/90 transition-colors">
+              <Link to="/layanan-surat" className="inline-flex items-center gap-2 bg-teal-600 text-white px-4 py-2 text-xs sm:text-sm font-semibold shadow-md shadow-teal-600/30 hover:bg-teal-700 transition-all">
                 <FileText className="w-4 h-4" /> Ajukan Surat Online
               </Link>
-              <Link to="/daftar-umkm" className="inline-flex items-center gap-2 border border-white/30 bg-white/10 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-white/15 transition-colors">
-                <Store className="w-4 h-4" /> Daftar UMKM
+              <Link to="/marketplace-umkm" className="inline-flex items-center gap-2 bg-white text-slate-700 border border-slate-200 px-4 py-2 text-xs sm:text-sm font-semibold shadow-sm hover:bg-slate-50 transition-all">
+                <Store className="w-4 h-4 text-teal-600" /> Jelajahi UMKM
               </Link>
-              <Link to="/aspirasi" className="inline-flex items-center gap-2 border border-white/30 bg-white/10 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-white/15 transition-colors">
-                <MessagesSquare className="w-4 h-4" /> Aspirasi Warga
+              <Link to="/aspirasi" className="inline-flex items-center gap-2 bg-white text-slate-700 border border-slate-200 px-4 py-2 text-xs sm:text-sm font-semibold shadow-sm hover:bg-slate-50 transition-all">
+                <MessagesSquare className="w-4 h-4 text-teal-600" /> Aspirasi Warga
               </Link>
             </div>
           </div>
@@ -308,8 +279,8 @@ export default function Beranda() {
       </section>
 
       {/* Stats */}
-      <section className="max-w-7xl mx-auto px-4 -mt-12 relative z-20">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <section className="max-w-7xl mx-auto px-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-4">
           {[
             { icon: Users, label: 'Penduduk', value: totalPenduduk.toLocaleString('id-ID'), sub: `${lakiLaki}L / ${perempuan}P · ${totalKK} KK` },
             { icon: Store, label: 'UMKM Aktif', value: umkmItems.length, sub: 'Marketplace desa' },
@@ -326,13 +297,13 @@ export default function Beranda() {
               sub: `${data.aspirasiStats?.diproses || 0} diproses · ${data.aspirasiStats?.selesai || 0} selesai`,
             },
           ].map((s) => (
-            <div key={s.label} className="bg-teal-50 rounded-2xl border border-border p-5 shadow-sm">
-              <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center mb-3">
+            <div key={s.label} className="rounded-2xl bg-white border border-slate-200/80 p-3 md:p-5 shadow-sm hover:shadow-md transition-all">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center mb-2">
                 <s.icon className="w-5 h-5" />
               </div>
-              <p className="text-2xl font-extrabold text-slate-900">{s.value}</p>
-              <p className="text-sm font-medium text-slate-600">{s.label}</p>
-              <p className="text-xs text-slate-600/70">{s.sub}</p>
+              <p className="text-lg md:text-2xl font-extrabold text-slate-900">{s.value}</p>
+              <p className="text-sm font-semibold text-slate-700">{s.label}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{s.sub}</p>
             </div>
           ))}
         </div>
@@ -340,22 +311,27 @@ export default function Beranda() {
 
       {/* Services */}
       <section className="max-w-7xl mx-auto px-4 py-12">
-        <h2 className="text-2xl font-extrabold text-center mb-2">Layanan Publik</h2>
-        <p className="text-teal-300 text-center mb-8">Akses layanan desa secara online, cepat, dan transparan</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="text-center max-w-2xl mx-auto mb-8">
+          <span className="text-teal-600 text-xs font-bold uppercase tracking-wider bg-teal-50 px-3 py-1 rounded-full">FITUR UTAMA</span>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 mt-2">Layanan Publik Digital</h2>
+          <p className="text-slate-600 text-sm mt-1">Akses berbagai layanan pemerintahan desa secara transparan dan efisien</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {services.map((s) => (
             <Link
               key={s.to}
               to={s.to}
-              className="group bg-card rounded-2xl border border-border p-6 hover:shadow-md hover:border-teal-600 transition-all"
+              className="group rounded-2xl bg-white border border-slate-200/80 p-5 shadow-sm hover:shadow-lg hover:border-teal-500 transition-all flex flex-col justify-between"
             >
-              <div className="w-12 h-12 rounded-xl bg-teal-500/20 text-[#E59824] flex items-center justify-center mb-4 group-hover:bg-teal-500 group-hover:text-[#E59824] transition-colors">
-                <s.icon className="w-6 h-6" />
+              <div>
+                <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mb-3 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                  <s.icon className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-lg text-slate-900 mb-1">{s.label}</h3>
+                <p className="text-sm text-slate-500">{s.desc}</p>
               </div>
-              <h3 className="font-bold text-lg mb-1">{s.label}</h3>
-              <p className="text-sm text-teal-300/70">{s.desc}</p>
-              <span className="inline-flex items-center gap-1 text-sm text-[#E59824] font-medium mt-3 group-hover:gap-2 transition-all">
-                Pelajari <ArrowRight className="w-4 h-4" />
+              <span className="inline-flex items-center gap-1 text-sm text-teal-600 font-semibold mt-4 group-hover:gap-1.5 transition-all">
+                Akses Layanan <ArrowRight className="w-4 h-4" />
               </span>
             </Link>
           ))}
@@ -363,86 +339,100 @@ export default function Beranda() {
       </section>
 
       {/* Koleksi Produk UMKM */}
-      <BerandaUmkm items={umkmItems} />
+      <div className="max-w-7xl mx-auto px-4 mb-8">
+        <BerandaUmkm items={umkmItems} />
+      </div>
 
       {/* Data Kependudukan */}
-      <section className="max-w-7xl mx-auto px-4 py-10">
-        <div className="mb-6">
-          <h2 className="text-2xl font-extrabold">Data Kependudukan Desa</h2>
-          <p className="text-teal-300 text-sm">Statistik warga berdasarkan Data Kartu Keluarga terbaru</p>
+      <section className="max-w-7xl mx-auto px-4 py-6">
+        <div className="mb-4">
+          <span className="text-teal-600 text-xs font-bold uppercase tracking-wider bg-teal-50 px-3 py-1 rounded-full">STATISTIK DESA</span>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 mt-2">Data Kependudukan Desa</h2>
+          <p className="text-slate-600 text-sm">Demografi warga berdasarkan basis data kependudukan terkini</p>
         </div>
         <div className="mb-6">
           <PendudukStatsGrid stats={data.pendudukStats} />
         </div>
-        <PendudukCharts stats={data.pendudukStats} />
+        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+          <PendudukCharts stats={data.pendudukStats} />
+        </div>
       </section>
 
-      {/* APBDes */}
-      <section className="max-w-7xl mx-auto px-4 py-8">
-        <div className="bg-card rounded-2xl border border-border p-6">
-          <h3 className="font-bold text-lg mb-1">APBDes 2026</h3>
-          <p className="text-sm text-teal-300 mb-4">Ringkasan anggaran</p>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-xl bg-emerald-50">
-              <div>
-                <p className="text-sm text-teal-300">Total Pendapatan</p>
-                <p className="text-xl font-extrabold text-emerald-700">{formatRupiah(totalPendapatan)}</p>
+      {/* APBDes & Realisasi */}
+      <section className="max-w-7xl mx-auto px-4 py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm flex flex-col justify-between">
+            <div>
+              <span className="text-teal-600 text-xs font-bold uppercase tracking-wider bg-teal-50 px-3 py-1 rounded-full">KEUANGAN DESA</span>
+              <h3 className="font-extrabold text-xl text-slate-900 mt-2 mb-1">APBDes 2026</h3>
+              <p className="text-sm text-slate-500 mb-4">Ringkasan anggaran pendapatan dan belanja desa</p>
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 rounded-xl bg-emerald-50/80 border border-emerald-100">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-emerald-800">Total Pendapatan</p>
+                    <p className="text-sm sm:text-lg font-extrabold text-emerald-700 truncate">{formatRupiah(totalPendapatan)}</p>
+                  </div>
+                  <Wallet className="w-7 h-7 text-emerald-600 flex-shrink-0" />
+                </div>
+                <div className="flex items-center justify-between p-4 rounded-xl bg-amber-50/80 border border-amber-100">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-amber-800">Total Belanja</p>
+                    <p className="text-sm sm:text-lg font-extrabold text-amber-700 truncate">{formatRupiah(totalBelanja)}</p>
+                  </div>
+                  <Wallet className="w-7 h-7 text-amber-600 flex-shrink-0" />
+                </div>
               </div>
-              <Wallet className="w-8 h-8 text-emerald-600" />
             </div>
-            <div className="flex items-center justify-between p-4 rounded-xl bg-amber-50">
-              <div>
-                <p className="text-sm text-teal-300">Total Belanja</p>
-                <p className="text-xl font-extrabold text-amber-700">{formatRupiah(totalBelanja)}</p>
-              </div>
-              <Wallet className="w-8 h-8 text-amber-600" />
-            </div>
-            <Link to="/transparansi-apbdes" className="block text-center text-sm text-[#E59824] font-medium hover:underline pt-2">
-              Lihat rincian transparansi APBDes →
+            <Link to="/transparansi-apbdes" className="mt-5 inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-teal-50 text-teal-700 font-semibold text-sm hover:bg-teal-100 transition-colors">
+              Lihat Rincian Transparansi APBDes <ArrowRight className="w-4 h-4" />
             </Link>
+          </div>
+
+          <div className="lg:col-span-2 rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+            <BerandaRealisasi items={realisasiItems} />
           </div>
         </div>
       </section>
 
-      {/* Realisasi Pembangunan */}
-      <BerandaRealisasi items={realisasiItems} />
-
       {/* Profile teaser */}
       {profil && (
-        <section className="max-w-7xl mx-auto px-4 py-12">
-          <div className="bg-gradient-to-br from-teal-600 to-teal-800 rounded-3xl p-8 text-teal-100 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+        <section className="max-w-7xl mx-auto px-4 py-10">
+          <div className="rounded-3xl bg-gradient-to-br from-teal-700 to-teal-900 p-6 md:p-10 text-white shadow-xl grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
             <div>
-              <h2 className="text-2xl font-extrabold mb-3">Tentang Desa {profil.nama_desa}</h2>
-              <div className="space-y-2 text-teal-200/80">
-                <p className="flex items-center gap-2"><MapPin className="w-4 h-4 text-[#E59824]" /> {profil.kecamatan}, {profil.kabupaten}, {profil.provinsi}</p>
+              <span className="px-3 py-1 rounded-full bg-teal-600/60 text-teal-200 text-xs font-semibold uppercase tracking-wider">TENTANG KAMI</span>
+              <h2 className="text-3xl font-extrabold mt-3 mb-3">Desa {profil.nama_desa}</h2>
+              <div className="space-y-2 text-teal-100 text-sm">
+                <p className="flex items-center gap-2"><MapPin className="w-4 h-4 text-amber-400" /> {profil.kecamatan}, {profil.kabupaten}, {profil.provinsi}</p>
                 <p>Luas Wilayah: {profil.luas_wilayah} km² · {profil.jumlah_rt} RT / {profil.jumlah_rw} RW</p>
-                <p className="leading-relaxed mt-3">{profil.potensi_ekonomi || 'Desa dengan potensi ekonomi dan wisata yang berkembang.'}</p>
+                <p className="leading-relaxed text-teal-50/90">{profil.potensi_ekonomi || 'Desa dengan potensi ekonomi, pertanian, dan pariwisata yang berkembang pesat.'}</p>
               </div>
-              <Link to="/profil-desa" className="inline-flex items-center gap-2 bg-[#E59824] text-[#E59824-foreground] px-5 py-2.5 rounded-xl text-sm font-semibold mt-5 hover:bg-[#E59824]/90">
-                Selengkapnya <ArrowRight className="w-4 h-4" />
+              <Link to="/profil-desa" className="inline-flex items-center gap-2 bg-amber-500 text-slate-900 px-5 py-2.5 rounded-full text-sm font-bold mt-5 hover:bg-amber-400 transition-colors shadow-md">
+                Profil Selengkapnya <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-teal-200/10 rounded-xl p-4 text-center">
+              <div className="bg-white/10 backdrop-blur rounded-2xl p-4 text-center border border-white/10">
                 <p className="text-3xl font-extrabold">{profil.jumlah_penduduk || totalPenduduk}</p>
-                <p className="text-xs text-teal-300/70">Penduduk</p>
+                <p className="text-xs text-teal-200 mt-1">Penduduk</p>
               </div>
-              <div className="bg-teal-200/10 rounded-xl p-4 text-center">
+              <div className="bg-white/10 backdrop-blur rounded-2xl p-4 text-center border border-white/10">
                 <p className="text-3xl font-extrabold">{profil.jumlah_rt || 0}</p>
-                <p className="text-xs text-teal-300/70">RT</p>
+                <p className="text-xs text-teal-200 mt-1">RT</p>
               </div>
-              <div className="bg-teal-200/10 rounded-xl p-4 text-center">
+              <div className="bg-white/10 backdrop-blur rounded-2xl p-4 text-center border border-white/10">
                 <p className="text-3xl font-extrabold">{profil.luas_wilayah || 0}</p>
-                <p className="text-xs text-teal-300/70">km²</p>
+                <p className="text-xs text-teal-200 mt-1">km²</p>
               </div>
-              <div className="bg-teal-200/10 rounded-xl p-4 text-center">
+              <div className="bg-white/10 backdrop-blur rounded-2xl p-4 text-center border border-white/10">
                 <p className="text-3xl font-extrabold">{umkmItems.length}</p>
-                <p className="text-xs text-teal-300/70">UMKM</p>
+                <p className="text-xs text-teal-200 mt-1">UMKM</p>
               </div>
             </div>
           </div>
         </section>
       )}
+      </div>
     </div>
   );
 }

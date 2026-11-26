@@ -87,24 +87,24 @@ export default function LayananSuratPublik() {
             <h1 className="text-3xl md:text-4xl font-extrabold">Layanan Surat Online</h1>
           </div>
         </section>
-        <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-          <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-10 h-10 text-emerald-600" />
+        <div className="max-w-2xl mx-auto px-4 py-14 text-center">
+          <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-5">
+            <CheckCircle className="w-8 h-8 text-emerald-600" />
           </div>
           <h2 className="text-2xl font-extrabold mb-2">Pengajuan Berhasil!</h2>
-          <p className="text-muted-foreground mb-6">
+          <p className="text-muted-foreground mb-5">
             Surat Anda telah diajukan dan akan diproses oleh perangkat desa. Anda akan menerima
             notifikasi WhatsApp saat surat selesai diproses.
           </p>
-          <div className="bg-card rounded-2xl border border-border p-6 text-left mb-6">
-            <h3 className="font-bold mb-3">Langkah Selanjutnya:</h3>
+          <div className="bg-card rounded-2xl border border-border p-5 text-left mb-5">
+            <h3 className="font-bold mb-2">Langkah Selanjutnya:</h3>
             <ol className="space-y-2 text-sm text-muted-foreground">
               <li>1. Pengajuan Anda akan ditinjau oleh perangkat desa</li>
               <li>2. Anda akan menerima notifikasi WhatsApp saat status diperbarui</li>
               <li>3. Ambil surat di Kantor Desa setelah selesai diproses</li>
             </ol>
           </div>
-          <Button onClick={() => setSuccess(false)} className="bg-primary hover:bg-primary/90">
+          <Button onClick={() => setSuccess(false)} className="bg-primary hover:bg-primary/90 w-full">
             Ajukan Surat Lain
           </Button>
         </div>
@@ -121,11 +121,11 @@ export default function LayananSuratPublik() {
         </div>
       </section>
 
-      <div className="max-w-2xl mx-auto px-4 py-10">
-        <div className="bg-card rounded-2xl border border-border p-6 md:p-8">
-          <div className="flex items-center gap-3 mb-6 pb-6 border-b border-border">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-              <FileText className="w-6 h-6" />
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <div className="bg-card rounded-2xl border border-border p-5 md:p-7">
+          <div className="flex items-center gap-3 mb-5 pb-5 border-b border-border">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+              <FileText className="w-5 h-5" />
             </div>
             <div>
               <h2 className="font-bold text-lg">Formulir Pengajuan Surat</h2>
@@ -134,7 +134,7 @@ export default function LayananSuratPublik() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>NIK <span className="text-destructive">*</span></Label>
                 <Input
@@ -219,7 +219,7 @@ export default function LayananSuratPublik() {
           </form>
         </div>
 
-        <p className="text-center text-sm text-muted-foreground mt-6">
+        <p className="text-center text-sm text-muted-foreground mt-5">
           Sudah mengajukan? Cek status di{' '}
           <Link to="/admin/surat" className="text-primary font-medium hover:underline">Dashboard Admin</Link>
           {' '}atau hubungi kantor desa.
