@@ -3,6 +3,7 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import PublicNavbar from './PublicNavbar';
 import PublicFooter from './PublicFooter';
 import AccessibilityWidget from './AccessibilityWidget';
+import EmergencyWidget from './EmergencyWidget';
 import useWebsiteSettings from '@/hooks/useWebsiteSettings';
 import { FileText, BarChart3, Home, ShoppingBag, MessageSquare } from 'lucide-react';
 
@@ -26,6 +27,7 @@ export default function PublicLayout() {
       </main>
       <PublicFooter />
       <AccessibilityWidget />
+      <EmergencyWidget />
 
       {/* Bilah Navigasi Bawah Khusus HP */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-t border-slate-200 shadow-lg px-2 py-2">

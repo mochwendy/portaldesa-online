@@ -73,6 +73,7 @@ const entityFileMap = {
   AkunAkses: 'AkunAkses_export.csv',
   UserGroup: 'UserGroup_export.csv',
   WebsiteSetting: 'WebsiteSetting_export.csv',
+  KontakDarurat: 'KontakDarurat_export.csv',
 };
 
 async function loadEntityData(entityName) {
@@ -346,6 +347,7 @@ const entityNames = [
   'ProfilDesa', 'APBDes', 'RealisasiPembangunan', 'UsulanPembangunan',
   'DokumenPembangunan', 'SuratKeterangan', 'UMKM', 'MenuPortal',
   'AkunAkses', 'UserGroup', 'User', 'WebsiteSetting',
+  'KontakDarurat',
 ];
 
 entityNames.forEach((name) => {

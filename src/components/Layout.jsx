@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, FileText, Wallet, Store,
   Megaphone, Building2, Share2, Menu, ShieldCheck,
   Newspaper, UserCog, Globe, ClipboardList, Navigation, HardHat,
-  ShieldAlert, Loader2, UserRound, MessagesSquare, LogOut
+  ShieldAlert, Loader2, UserRound, MessagesSquare, LogOut, Phone
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import useAccessPermissions from '@/hooks/useAccessPermissions';
@@ -23,6 +23,7 @@ const navItems = [
   { to: '/admin/perangkat-desa', label: 'Perangkat Desa', icon: UserCog, module: 'perangkat' },
   { to: '/admin/pengumuman', label: 'Pengumuman', icon: Megaphone, module: 'pengumuman' },
   { to: '/admin/aspirasi', label: 'Aspirasi Warga', icon: MessagesSquare, module: 'aspirasi' },
+  { to: '/admin/kontak-darurat', label: 'Nomor Darurat', icon: Phone, module: 'kontak_darurat' },
   { to: '/admin/profil-desa', label: 'Profil Desa', icon: Building2, module: 'profil' },
   { to: '/admin/integrasi', label: 'Integrasi Sistem', icon: Share2, module: 'integrasi' },
   { to: '/admin/menu-portal', label: 'Pengaturan Menu Portal', icon: Navigation, module: 'menu_portal' },

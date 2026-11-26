@@ -1,0 +1,6 @@
+id,nama_layanan,nama_petugas,jabatan,kategori,no_telepon,no_whatsapp,aktif,urutan
+1,Ambulans Siaga Desa,Dr. Siti Rahayu,Koordinator Ambulans,Kesehatan,"0811-2345-678","628112345678",true,1
+2,Bhabinkamtibmas Desa Tagogapu,Bripda Ahmad Fauzi,Bhabinkamtibmas,Keamanan,"0812-3456-789","628123456789",true,2
+3,Babinsa Desa Tagogapu,Sertu Budi Santoso,Babinsa,Keamanan,"0813-4567-890","628134567890",true,3
+4,Bidan Siaga / Puskesmas Padalarang,Ns. Rina Marlina,Bidan Desa,Kesehatan,"0814-5678-901","628145678901",true,4
+5,Damkar Bandung Barat,Akhmad Rizki,Kepala Damkar,Kebencanaan,"0815-6789-012","628156789012",true,5

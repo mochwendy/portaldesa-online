@@ -17,6 +17,7 @@ export const PERMISSION_ACTIONS = [
     { key: 'perangkat', label: 'Perangkat Desa' },
     { key: 'pengumuman', label: 'Pengumuman' },
     { key: 'aspirasi', label: 'Aspirasi Warga' },
+    { key: 'kontak_darurat', label: 'Nomor Darurat' },
     { key: 'profil', label: 'Profil Desa' },
     { key: 'integrasi', label: 'Integrasi Sistem' },
     { key: 'menu_portal', label: 'Pengaturan Menu Portal' },
