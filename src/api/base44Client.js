@@ -1,7 +1,7 @@
 import { appParams } from '@/lib/app-params';
 import { loadLocalData } from '@/lib/localData';
 
-export const IS_LOCALHOST = true;
+export const IS_LOCALHOST = !import.meta.env.VITE_BASE44_APP_BASE_URL;
 
 const MOCK_USER = {
   id: 'mock-admin-local',
