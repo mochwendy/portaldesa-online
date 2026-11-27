@@ -12,6 +12,7 @@ import AspirasiStatusFlow from '@/components/aspirasi/AspirasiStatusFlow';
 import { buildWhatsAppLink, buildAspirasiTanggapanMessage, normalizePhone } from '@/lib/whatsapp';
 
 const FINAL_STAGES = ['Selesai', 'Ditolak'];
+const WA_NOTIFY_STATUSES = ['Diterima', 'Diproses', 'Dijawab', 'Ditolak'];
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -22,6 +23,7 @@ export default function AspirasiDetailDialog({ open, onOpenChange, aspirasi, onS
   const [finalStage, setFinalStage] = useState('none');
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [prevAspirasi, setPrevAspirasi] = useState(null);
 
   useEffect(() => {
     if (!aspirasi) return;
@@ -31,6 +33,7 @@ export default function AspirasiDetailDialog({ open, onOpenChange, aspirasi, onS
     if (!aspirasi.petugas) {
       base44.auth.me().then((u) => setPetugas(u?.full_name || '')).catch(() => {});
     }
+    setPrevAspirasi(aspirasi);
   }, [aspirasi]);
 
   // Status mengikuti tahapan aksi: petugas → Diproses, tanggapan → Dijawab, selesai/tolak manual.
@@ -53,15 +56,47 @@ export default function AspirasiDetailDialog({ open, onOpenChange, aspirasi, onS
     return status;
   };
 
+  // Kirim notifikasi WhatsApp saat status berubah ke status yang memerlukan notifikasi.
+  const sendWaNotification = async (status) => {
+    if (!aspirasi) return false;
+    const noTelp = aspirasi.no_telepon;
+    if (!noTelp) return false;
+    try {
+      const message = buildAspirasiTanggapanMessage(aspirasi, tanggapan.trim() || '', status);
+      const link = buildWhatsAppLink(noTelp, message);
+      window.open(link, '_blank');
+      return true;
+    } catch (err) {
+      console.error('Gagal mengirim notifikasi WhatsApp:', err);
+      return false;
+    }
+  };
+
   const save = async () => {
     if (!aspirasi) return;
     setSaving(true);
     try {
       const status = await persist();
-      toast({
-        title: 'Aspirasi diperbarui',
-        description: `Tanggapan tersimpan dengan status ${status}.`,
-      });
+      const isNotifStatus = WA_NOTIFY_STATUSES.includes(status);
+
+      // Cek apakah status berubah dari yang sebelumnya
+      const prevStatus = prevAspirasi?.status;
+      const statusChanged = prevStatus && prevStatus !== status;
+
+      if (isNotifStatus && aspirasi.no_telepon) {
+        try {
+          const message = buildAspirasiTanggapanMessage(aspirasi, tanggapan.trim(), status);
+          window.open(buildWhatsAppLink(aspirasi.no_telepon, message), '_blank');
+        } catch (waErr) {
+          console.error('Gagal mengirim notifikasi WhatsApp:', waErr);
+          // Tidak menghentikan alur menyimpan, notifikasi WhatsApp adalah tambahan
+        }
+      }
+
+      const msg = statusChanged
+        ? `Status berubah dari ${prevStatus} menjadi ${status}. Tanggapan tersimpan.`
+        : `Tanggapan tersimpan dengan status ${status}.`;
+      toast({ title: 'Aspirasi diperbarui', description: msg });
       onOpenChange(false);
       onSaved();
     } catch (err) {

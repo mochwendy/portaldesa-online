@@ -1,7 +1,7 @@
 import { appParams } from '@/lib/app-params';
 import { loadLocalData } from '@/lib/localData';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient.js';
-import { createSupabaseEntity, supabaseKelolaAkunAkses, getPortalNotifications } from './supabaseAdapter.js';
+import { createSupabaseEntity, supabaseKelolaAkunAkses, getPortalNotifications, supabaseSubmitAspirasi } from './supabaseAdapter.js';
 
 export const IS_LOCALHOST = !import.meta.env.VITE_BASE44_APP_BASE_URL;
 
@@ -13,7 +13,7 @@ const MOCK_USER = {
   is_mock: true,
 };
 
-async function fetchCSV(filename) {
+export async function fetchCSV(filename) {
   const url = `/data/${filename}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to load ${filename}: ${res.status}`);
@@ -21,7 +21,7 @@ async function fetchCSV(filename) {
   return text;
 }
 
-function parseCSV(content) {
+export function parseCSV(content) {
   if (!content || typeof content !== 'string') return [];
   const lines = content.split('\n').filter((l) => l && l.trim());
   if (lines.length < 2) return [];
@@ -34,7 +34,7 @@ function parseCSV(content) {
   });
 }
 
-function parseCSVLine(line) {
+export function parseCSVLine(line) {
   const result = [];
   let current = '';
   let inQuotes = false;
@@ -418,6 +418,11 @@ const functions = {
           return { data: await getPortalNotifications() };
         }
         return { data: await fetchPortalNotifications() };
+      case 'submitAspirasi':
+        if (isSupabaseConfigured()) {
+          return { data: await supabaseSubmitAspirasi(params) };
+        }
+        return { data: null };
       case 'kelolaAkunAkses':
         if (isSupabaseConfigured()) {
           return { data: await supabaseKelolaAkunAkses(params) };

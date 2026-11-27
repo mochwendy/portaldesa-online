@@ -41,6 +41,43 @@ export default function UserAccounts() {
     }
   };
 
+  // Helper: normalize group kode (ADMDES -> ADM)
+  const normalizeGroupKode = (kode) => {
+    if (!kode) return kode;
+    const upper = String(kode).trim().toUpperCase();
+    if (upper === 'ADMDES') return 'ADM';
+    return upper;
+  };
+
+  // Helper: get canonical group name from kode
+  const getGroupNamaFromKode = (kode) => {
+    switch (normalizeGroupKode(kode)) {
+      case 'SU': return 'Super Admin';
+      case 'ADM':
+      case 'KADES': return 'Admin Desa';
+      case 'SEKDES': return 'Sekretaris Desa';
+      case 'STAF': return 'Staf';
+      case 'WARGA': return 'Warga';
+      case 'GUEST': return 'Guest';
+      default: return '';
+    }
+  };
+
+  // Helper: get hierarki from group kode
+  const getHierarkiFromKode = (kode) => {
+    const upper = normalizeGroupKode(kode);
+    switch (upper) {
+      case 'SU': return 'super_admin';
+      case 'ADM':
+      case 'KADES': return 'admin_desa';
+      case 'SEKDES':
+      case 'STAF': return 'operator';
+      case 'WARGA':
+      case 'GUEST':
+      default: return 'warga';
+    }
+  };
+
   // Helper: check if group is admin (Super Admin) - handle string "true"/"false" from CSV
   const isAdminGroup = (g) => String(g.is_admin).toLowerCase() === 'true' || g.kode === 'SU';
 
@@ -57,6 +94,26 @@ export default function UserAccounts() {
                 getRoleLevel(g.kode) >= ROLE_LEVELS.OPERATOR ? ROLE_LABELS.OPERATOR :
                 ROLE_LABELS.WARGA
     }));
+  }, [groups]);
+
+  // Build group options for dropdown: normalize kode AND nama, then build label from normalized data
+  const groupOptions = useMemo(() => {
+    return groups.map(g => {
+      const rawKode = String(g.kode || g.id || '').trim();
+      const groupKey = normalizeGroupKode(rawKode);
+      let groupNama = g.nama || groupKey;
+      // Force-normalize nama if it contains ADMDES
+      if (String(groupNama).toUpperCase().includes('ADMDES')) {
+        groupNama = getGroupNamaFromKode(groupKey) || groupNama.replace(/\(ADMDES\)/gi, '').trim() || 'Admin Desa';
+      }
+      return {
+        value: groupKey,
+        label: `${groupNama} (${groupKey})`,
+        hierarki: getHierarkiFromKode(groupKey),
+        nama: groupNama,
+        kode: groupKey,
+      };
+    });
   }, [groups]);
 
   const load = useCallback(async () => {
@@ -85,13 +142,41 @@ export default function UserAccounts() {
   useEffect(() => { load(); }, [load]);
 
   const handleGroupChange = async (row, code) => {
-    const grupKode = code === 'none' ? '' : code;
+    const grupKode = code === 'none' ? '' : normalizeGroupKode(code);
     setUpdatingId(row.id);
     try {
-      await base44.functions.invoke('kelolaAkunAkses', { action: 'set-group', id: row.id, grup_kode: grupKode });
-      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, grup_kode: grupKode } : r)));
+      // Find the selected group to get grup_nama and hierarki
+      const selectedGroup = groups.find(g => normalizeGroupKode(g.kode) === grupKode);
+      const grupNama = selectedGroup?.nama || getGroupNamaFromKode(grupKode) || grupKode;
+      const hierarki = selectedGroup?.hierarki || getHierarkiFromKode(grupKode);
+
+      // Use the same action and payload format as modal Edit (action: 'save' with full fields)
+      // This matches AccountFormDialog.handleSave which calls kelolaAkunAkses with action: 'save'
+      await base44.functions.invoke('kelolaAkunAkses', {
+        action: 'save',
+        id: row.id,
+        email: row.email,
+        nama: row.nama,
+        username: row.username,
+        jabatan: row.jabatan || '',
+        status: row.status || 'Aktif',
+        grup_kode: grupKode,
+        grup_nama: grupNama,
+        hierarki: hierarki,
+      });
+
+      // Update local state immediately (no full reload needed since adapter returns updated row)
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === row.id
+            ? { ...r, grup_kode: grupKode, grup_nama: grupNama, hierarki: hierarki }
+            : r
+        )
+      );
     } catch (e) {
       window.alert(e?.response?.data?.message || 'Gagal memperbarui grup pengguna.');
+      // Revert on error by reloading
+      await load();
     } finally {
       setUpdatingId(null);
     }
@@ -209,8 +294,22 @@ export default function UserAccounts() {
                 const isMe = me && row.akun_login && row.akun_login.id === me.id;
                 const isSystemAccount = row._isSystemAccount === true;
                 
-                const rowGroup = groups.find(g => g.kode === row.grup_kode);
-                const roleLevel = isSystemAccount ? 3 : (rowGroup ? getRoleLevel(rowGroup.kode) : getRoleLevel(row.grup_kode));
+                // Normalize account's grup_kode for matching (ADMDES -> ADM)
+                const accountGroupKey = normalizeGroupKode(row.grup_kode || row.user_group_id || '');
+                const rowGroup = groups.find(g => normalizeGroupKode(g.kode) === accountGroupKey);
+                const matchedHierarki = rowGroup?.hierarki || getHierarkiFromKode(accountGroupKey);
+                
+                // Map hierarki to role level for display
+                const hierarkiToRoleLevel = (h) => {
+                  switch (h) {
+                    case 'super_admin': return 3;
+                    case 'admin_desa': return 2;
+                    case 'operator': return 1;
+                    case 'warga': return 0;
+                    default: return 0;
+                  }
+                };
+                const roleLevel = isSystemAccount ? 3 : hierarkiToRoleLevel(matchedHierarki);
                 const isSuper = roleLevel >= 3;
                 const role = roleLevel >= 2 ? 'admin' : 'user';
                 const status = row.status || 'Aktif';
@@ -252,32 +351,47 @@ export default function UserAccounts() {
                         <span className="text-sm text-muted-foreground">{displayGrupNama}</span>
                       ) : (
                         <Select
-                          value={row.grup_kode || 'none'}
+                          value={accountGroupKey || 'none'}
                           onValueChange={(v) => handleGroupChange(row, v)}
                           disabled={updatingId === row.id}
                         >
-                          <SelectTrigger className="w-44">
+                          <SelectTrigger className="w-48">
                             {updatingId === row.id
                               ? <Loader2 className="w-4 h-4 animate-spin" />
                               : <SelectValue placeholder="Pilih grup" />}
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">Tanpa grup</SelectItem>
-                            {selectableGroups.map((g) => (
-                              <SelectItem key={g.id} value={g.kode}>{g.nama}</SelectItem>
+                            {groupOptions.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_STYLES[displayRole] || ROLE_STYLES.user}`}>
-                        {displayRoleLabel}
-                      </span>
-                      {isSystemAccount && (
-                        <Badge variant="outline" className="ml-2 px-2 py-0.5 text-[10px] border-amber-300 text-amber-700 bg-amber-50">
-                          <Shield className="w-3 h-3 inline mr-1" /> Akun Sistem Terproteksi
-                        </Badge>
+                      {isSystemAccount ? (
+                        <>
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_STYLES[displayRole] || ROLE_STYLES.user}`}>
+                            {displayRoleLabel}
+                          </span>
+                          <Badge variant="outline" className="ml-2 px-2 py-0.5 text-[10px] border-amber-300 text-amber-700 bg-amber-50">
+                            <Shield className="w-3 h-3 inline mr-1" /> Akun Sistem Terproteksi
+                          </Badge>
+                        </>
+                      ) : (
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                          matchedHierarki === 'super_admin' ? 'bg-purple-100 text-purple-700 border-purple-300' :
+                          matchedHierarki === 'admin_desa' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
+                          matchedHierarki === 'operator' ? 'bg-blue-100 text-blue-700 border-blue-300' :
+                          matchedHierarki === 'warga' ? 'bg-gray-100 text-gray-700 border-gray-300' :
+                          'bg-muted text-muted-foreground border-border'
+                        }`}>
+                          {matchedHierarki === 'super_admin' ? 'Super Admin' :
+                           matchedHierarki === 'admin_desa' ? 'Admin Desa' :
+                           matchedHierarki === 'operator' ? 'Operator' :
+                           matchedHierarki === 'warga' ? 'Warga' : 'Belum Diatur'}
+                        </span>
                       )}
                     </td>
                     <td className="px-4 py-3">

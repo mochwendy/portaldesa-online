@@ -99,7 +99,7 @@ export default function EmergencyWidget() {
           <span className="hidden sm:inline font-medium">Darurat</span>
         </button>
       </div>
-      <style jsx global>{`
+      <style>{`
         @keyframes slide-in-up {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }

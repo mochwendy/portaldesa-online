@@ -25,6 +25,9 @@ const ROLE_LABELS_BY_LEVEL = {
 
 const USERNAME_PATTERN = /^[a-z0-9._-]{3,}$/;
 
+import { normalizeGroupKode } from '@/api/supabaseAdapter';
+import { getGroupNamaFromKode } from '@/api/supabaseAdapter';
+
 export default function AccountFormDialog({ open, onOpenChange, account, onSaved }) {
   const [form, setForm] = useState(EMPTY);
   const [groups, setGroups] = useState([]);
@@ -58,7 +61,19 @@ export default function AccountFormDialog({ open, onOpenChange, account, onSaved
 
     setLoadingGroups(true);
     base44.entities.UserGroup.list({ sort: 'urutan', limit: 100 })
-      .then((res) => setGroups(Array.isArray(res) ? res : []))
+      .then((res) => {
+        const groups = Array.isArray(res) ? res : [];
+        // Normalize kode AND nama before storing in state (ADMDES -> ADM, Admin Desa (ADMDES) -> Admin Desa)
+        const normalized = groups.map(g => {
+          const kode = normalizeGroupKode(g.kode);
+          let nama = g.nama || '';
+          if (String(nama).toUpperCase().includes('ADMDES')) {
+            nama = getGroupNamaFromKode(kode) || 'Admin Desa';
+          }
+          return { ...g, kode, nama };
+        });
+        setGroups(normalized);
+      })
       .catch(() => setGroups([]))
       .finally(() => setLoadingGroups(false));
 
@@ -336,7 +351,7 @@ export default function AccountFormDialog({ open, onOpenChange, account, onSaved
             <Label>Grup Pengguna</Label>
             <Select
               value={form.grup_kode || 'none'}
-              onValueChange={(v) => set('grup_kode', v === 'none' ? '' : v)}
+              onValueChange={(v) => set('grup_kode', v === 'none' ? '' : normalizeGroupKode(v))}
               disabled={loadingGroups}
             >
               <SelectTrigger>
@@ -348,8 +363,10 @@ export default function AccountFormDialog({ open, onOpenChange, account, onSaved
                 {selectableGroups.map((g) => {
                   const roleLevel = g.role_level ?? 1;
                   const roleLabel = ROLE_LABELS_BY_LEVEL[roleLevel] || 'Operator';
-                  const displayText = `${g.nama} (${g.kode}) — ${roleLabel}`;
-                  return <SelectItem key={g.id} value={g.kode}>{displayText}</SelectItem>;
+                  const groupNama = g.nama || 'Admin Desa';
+                  const groupKode = normalizeGroupKode(g.kode);
+                  const displayText = `${groupNama} (${groupKode}) — ${roleLabel}`;
+                  return <SelectItem key={g.id} value={groupKode}>{displayText}</SelectItem>;
                 })}
               </SelectContent>
             </Select>

@@ -8,6 +8,7 @@ import { KATEGORI_OPTIONS } from '@/components/aspirasi/AspirasiForm';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
 import { Search, RefreshCw, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -22,6 +23,7 @@ export default function AspirasiAdmin() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const { toast } = useToast();
 
   const buildQuery = () => {
     const query = {};

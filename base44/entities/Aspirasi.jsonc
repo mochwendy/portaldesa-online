@@ -76,6 +76,11 @@
       "petugas": {
         "type": "string",
         "title": "Petugas Penanggung Jawab"
+      },
+      "foto_bukti": {
+        "type": "string",
+        "title": "Foto Bukti Pelapor",
+        "description": "URL foto bukti yang diunggah pelapor (opsional)"
       }
     },
     "required": [

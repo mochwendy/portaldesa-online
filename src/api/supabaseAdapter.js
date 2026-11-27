@@ -6,6 +6,36 @@ function assertSupabase() {
     }
 }
 
+const ASPIRASI_BUKTI_BUCKET = 'aspirasi-bukti';
+
+export async function uploadAspirasiBuktiPhoto(file, nomorTiket) {
+    assertSupabase();
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${nomorTiket}/foto_bukti.${fileExt}`;
+    console.log('DEBUG UPLOAD:', {
+        file: file.name, 
+        fileType: file.type,
+        fileSize: file.size,
+        fileName: fileName,
+        bucket: ASPIRASI_BUKTI_BUCKET,
+        operation: 'upload',
+        url: `${ASPIRASI_BUKTI_BUCKET}/${fileName}`
+    });
+    const { error: uploadError } = await supabase.storage
+        .from(ASPIRASI_BUKTI_BUCKET)
+        .upload(fileName, file, { cacheControl: '3600', upsert: false });
+    if (uploadError) {
+        console.error('DEBUG UPLOAD ERROR:', uploadError);
+        throw uploadError;
+    }
+
+    const { data: urlData } = supabase.storage
+        .from(ASPIRASI_BUKTI_BUCKET)
+        .getPublicUrl(fileName);
+    console.log('DEBUG UPLOAD SUCCESS:', urlData.publicUrl);
+    return urlData.publicUrl;
+}
+
 // Transform Supabase row (with data JSONB) to flat object matching CSV structure
 function transformRow(row) {
     if (!row) return null;
@@ -248,9 +278,22 @@ export function createSupabaseEntity(tableName) {
 
     async function update(id, payload) {
         try {
+            // Fetch existing row to merge JSONB data
+            const { data: existing, error: fetchError } = await supabase
+                .from(tableName)
+                .select('data')
+                .eq('id', id)
+                .single();
+            
+            if (fetchError) throw fetchError;
+            
+            // Merge existing data with payload (payload overwrites existing)
+            const existingData = existing?.data || {};
+            const mergedData = { ...existingData, ...payload };
+            
             const { data, error } = await supabase
                 .from(tableName)
-                .update({ data: payload, updated_at: new Date().toISOString() })
+                .update({ data: mergedData, updated_at: new Date().toISOString() })
                 .eq('id', id)
                 .select()
                 .single();
@@ -313,64 +356,115 @@ export function createSupabaseEntity(tableName) {
     return { list, filter, get, create, update, delete: remove, count };
 }
 
+// Normalize group kode: ADMDES -> ADM (canonical Admin Desa kode)
+export function normalizeGroupKode(kode) {
+    if (!kode) return kode;
+    const upper = String(kode).trim().toUpperCase();
+    if (upper === 'ADMDES') return 'ADM';
+    return upper;
+}
+
+// Get hierarki from group kode
+export function getHierarkiFromKode(kode) {
+    const normalized = normalizeGroupKode(kode);
+    switch (normalized) {
+        case 'SU': return 'super_admin';
+        case 'ADM':
+        case 'KADES': return 'admin_desa';
+        case 'SEKDES':
+        case 'STAF': return 'operator';
+        case 'WARGA':
+        case 'GUEST':
+        default: return 'warga';
+    }
+}
+
+// Get group nama from kode
+export function getGroupNamaFromKode(kode) {
+    const normalized = normalizeGroupKode(kode);
+    switch (normalized) {
+        case 'SU': return 'Super Admin';
+        case 'ADM':
+        case 'KADES': return 'Admin Desa';
+        case 'SEKDES': return 'Sekretaris Desa';
+        case 'STAF': return 'Staf';
+        case 'WARGA': return 'Warga';
+        case 'GUEST': return 'Guest';
+        default: return kode || 'Belum Diatur';
+    }
+}
+
 export async function supabaseKelolaAkunAkses(payload) {
     assertSupabase();
+    
+    // Use the entity helper which handles JSONB merge safely
+    const entity = createSupabaseEntity('AkunAkses');
     
     const { action, id, ...data } = payload;
     
     switch (action) {
         case 'list': {
-            const { data: rows, error } = await supabase.from('AkunAkses').select('*').order('created_at', { ascending: false });
-            if (error) throw error;
-            // Return in same format as local: { items: [...], is_super_admin: false }
-            return { items: transformRows(rows), is_super_admin: false };
+            const items = await entity.list('created_at', 500);
+            // Normalize grup_kode in all returned items
+            const normalizedItems = items.map(item => ({
+                ...item,
+                grup_kode: normalizeGroupKode(item.grup_kode),
+                grup_nama: item.grup_nama || getGroupNamaFromKode(item.grup_kode),
+                hierarki: item.hierarki || getHierarkiFromKode(item.grup_kode),
+            }));
+            return { items: normalizedItems, is_super_admin: false };
         }
         case 'create': {
-            const record = { id: crypto.randomUUID(), ...data, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-            const { data: row, error } = await supabase.from('AkunAkses').insert(record).select().single();
-            if (error) throw error;
-            return transformRow(row);
+            // Normalize grup_kode before create
+            const createData = {
+                ...data,
+                grup_kode: normalizeGroupKode(data.grup_kode),
+                grup_nama: data.grup_nama || getGroupNamaFromKode(data.grup_kode),
+                hierarki: data.hierarki || getHierarkiFromKode(data.grup_kode),
+            };
+            const created = await entity.create(createData);
+            return created;
         }
         case 'update': {
-            const { data: row, error } = await supabase
-                .from('AkunAkses')
-                .update({ ...data, updated_at: new Date().toISOString() })
-                .eq('id', id)
-                .select()
-                .single();
-            if (error) throw error;
-            return transformRow(row);
+            // Normalize grup_kode in update payload
+            const updateData = { ...data };
+            if (updateData.grup_kode) {
+                updateData.grup_kode = normalizeGroupKode(updateData.grup_kode);
+                updateData.grup_nama = getGroupNamaFromKode(updateData.grup_kode);
+                updateData.hierarki = getHierarkiFromKode(updateData.grup_kode);
+            }
+            const updated = await entity.update(id, updateData);
+            return updated;
         }
         case 'save': {
+            // Normalize grup_kode in save payload
+            const saveData = { ...data };
+            if (saveData.grup_kode) {
+                saveData.grup_kode = normalizeGroupKode(saveData.grup_kode);
+                saveData.grup_nama = getGroupNamaFromKode(saveData.grup_kode);
+                saveData.hierarki = getHierarkiFromKode(saveData.grup_kode);
+            }
             if (id) {
-                const { data: row, error } = await supabase
-                    .from('AkunAkses')
-                    .update({ ...data, updated_at: new Date().toISOString() })
-                    .eq('id', id)
-                    .select()
-                    .single();
-                if (error) throw error;
-                return transformRow(row);
+                const updated = await entity.update(id, saveData);
+                return updated;
             } else {
-                const record = { id: crypto.randomUUID(), ...data, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-                const { data: row, error } = await supabase.from('AkunAkses').insert(record).select().single();
-                if (error) throw error;
-                return transformRow(row);
+                const created = await entity.create(saveData);
+                return created;
             }
         }
         case 'set-group': {
-            const { data: row, error } = await supabase
-                .from('AkunAkses')
-                .update({ grup_kode: data.grup_kode, updated_at: new Date().toISOString() })
-                .eq('id', id)
-                .select()
-                .single();
-            if (error) throw error;
-            return transformRow(row);
+            // Update grup_kode, grup_nama, and hierarki using JSONB merge
+            const grupKode = normalizeGroupKode(data.grup_kode);
+            const updatePayload = {
+                grup_kode: grupKode,
+                grup_nama: getGroupNamaFromKode(grupKode),
+                hierarki: getHierarkiFromKode(grupKode),
+            };
+            const updated = await entity.update(id, updatePayload);
+            return updated;
         }
         case 'delete': {
-            const { error } = await supabase.from('AkunAkses').delete().eq('id', id);
-            if (error) throw error;
+            await entity.delete(id);
             return true;
         }
         default:
@@ -466,4 +560,145 @@ export async function getPortalNotifications() {
         console.error('getPortalNotifications error:', e);
         return [];
     }
+}
+
+// Implementasi submitAspirasi untuk Supabase
+export async function supabaseSubmitAspirasi(params) {
+    assertSupabase();
+    
+    const { nik, nama, no_telepon, kategori, judul, isi } = params;
+    const fotoFile = params.foto_bukti; // File object dari form (opsional)
+    
+    // Normalisasi input
+    const nikTrim = String(nik || '').trim();
+    const namaTrim = String(nama || '').trim();
+    const noTelepon = String(no_telepon || '').trim();
+    const kategoriTrim = String(kategori || '').trim();
+    const judulTrim = String(judul || '').trim();
+    const isiTrim = String(isi || '').trim();
+    
+    // Validasi input dasar
+    if (!/^\d{16}$/.test(nikTrim)) {
+        return { error: 'NIK harus terdiri dari 16 digit angka.' };
+    }
+    if (!namaTrim || namaTrim.length < 3) {
+        return { error: 'Nama lengkap wajib diisi minimal 3 karakter.' };
+    }
+    if (!/^[0-9+\-\s]{8,20}$/.test(noTelepon)) {
+        return { error: 'Nomor WhatsApp tidak valid.' };
+    }
+    if (!['Pengaduan', 'Aspirasi', 'Permintaan Informasi'].includes(kategoriTrim)) {
+        return { error: 'Kategori aspirasi tidak valid.' };
+    }
+    if (!judulTrim || judulTrim.length < 5) {
+        return { error: 'Judul minimal 5 karakter.' };
+    }
+    if (!isiTrim || isiTrim.length < 20) {
+        return { error: 'Uraian aspirasi minimal 20 karakter.' };
+    }
+    
+    // Cek data penduduk
+    const { data: pendudukRows, error: pendudukError } = await supabase
+        .from('Penduduk')
+        .select('*')
+        .eq('data->>nik', nikTrim)
+        .single();
+    
+    if (pendudukError || !pendudukRows) {
+        return { error: 'NIK tidak terdaftar dalam data penduduk Desa Tagog Apu.' };
+    }
+    
+    const warga = transformRow(pendudukRows);
+    
+    // Cek status kependudukan
+    if (warga.status_kependudukan && !['Aktif', 'Perantau'].includes(warga.status_kependudukan)) {
+        return { error: `NIK tercatat dengan status "${warga.status_kependudukan}" sehingga tidak dapat menggunakan saluran aspirasi.` };
+    }
+    
+    // Normalisasi nama untuk perbandingan
+    const normalize = (value) => String(value || '').toLowerCase().replace(/[^a-z]/g, '');
+    const namaInput = normalize(namaTrim);
+    const namaResmi = normalize(warga.nama_lengkap);
+    
+    if (!namaInput || !namaResmi || !(namaInput === namaResmi || namaResmi.includes(namaInput) || namaInput.includes(namaResmi))) {
+        return { error: 'Nama tidak sesuai dengan data NIK pada data penduduk desa.' };
+    }
+    
+    // Buat nomor tiket
+    const now = new Date();
+    const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const nomorTiket = `ASP-${stamp}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    
+    // Buat alamat dari data penduduk
+    const alamat = [warga.alamat, warga.rt ? `RT ${warga.rt}` : '', warga.rw ? `RW ${warga.rw}` : '']
+        .filter(Boolean)
+        .join(' ');
+    
+    // Upload foto bukti jika ada
+    let fotoUrl = null;
+    if (fotoFile) {
+        try {
+            fotoUrl = await uploadAspirasiBuktiPhoto(fotoFile, nomorTiket);
+            console.log('Foto bukti berhasil di-upload:', fotoUrl);
+        } catch (uploadErr) {
+            console.error('Gagal mengunggah foto bukti:', uploadErr);
+            return { error: `Gagal mengunggah foto bukti: ${uploadErr.message || 'Kesalahan tidak diketahui'}` };
+        }
+    }
+    
+    // Simpan aspirasi
+    const recordPayload = {
+        id: crypto.randomUUID(),
+        data: {
+            nomor_tiket: nomorTiket,
+            nama: warga.nama_lengkap || namaTrim,
+            nik: nikTrim,
+            no_telepon: noTelepon,
+            kategori: kategoriTrim,
+            judul: judulTrim,
+            isi: isiTrim,
+            alamat,
+            ...(fotoUrl && { foto_bukti: fotoUrl }),
+            status: 'Baru',
+            tanggal_diterima: now.toISOString(),
+            created_date: now.toISOString(),
+            updated_date: now.toISOString()
+        },
+        created_at: now.toISOString(),
+        updated_at: now.toISOString()
+    };
+
+    const { data: aspirasiData, error } = await supabase
+        .from('Aspirasi')
+        .insert(recordPayload)
+        .select()
+        .single();
+
+    if (error || !aspirasiData) {
+        const errorDetail = error ? {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+        } : 'Tidak ada data yang dikembalikan';
+        console.error('Gagal menyimpan aspirasi:', errorDetail);
+        return { error: `Gagal menyimpan aspirasi: ${errorDetail.message || 'kesalahan tidak diketahui'}${errorDetail.details ? ` (${errorDetail.details})` : ''}${errorDetail.hint ? ` - ${errorDetail.hint}` : ''}` };
+    }
+
+    const record = transformRow(aspirasiData);
+
+    if (!record) {
+        return { error: 'Data aspirasi tidak valid.' };
+    }
+
+    // Kirim notifikasi WhatsApp status Diterima (jika ada nomor telepon)
+    if (record.no_telepon) {
+        try {
+            console.log('[submitAspirasi] Notifikasi WhatsApp status Diterima siap dikirim ke:', record.no_telepon);
+        } catch (waErr) {
+            console.error('Gagal memproses notifikasi WhatsApp:', waErr);
+        }
+    }
+
+    return { success: true, data: record };
 }

@@ -70,6 +70,8 @@ export default async function (req) {
       nomor_tiket: record.nomor_tiket,
       nama: record.nama,
       kategori: record.kategori,
+      no_telepon: record.no_telepon,
+      judul: record.judul,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

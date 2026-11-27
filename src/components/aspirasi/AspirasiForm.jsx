@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertCircle, CheckCircle2, Loader2, Send } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2, Send, Camera, ImagePlus, X } from 'lucide-react';
+import { buildWhatsAppLink, buildAspirasiTanggapanMessage } from '@/lib/whatsapp';
 
 export const KATEGORI_OPTIONS = [
   { value: 'Pengaduan', label: 'Pengaduan', desc: 'Laporkan masalah pelayanan, infrastruktur, atau ketertiban.' },
@@ -13,33 +14,123 @@ export const KATEGORI_OPTIONS = [
 ];
 
 const EMPTY = { nama: '', nik: '', no_telepon: '', kategori: 'Pengaduan', judul: '', isi: '' };
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export default function AspirasiForm() {
   const [form, setForm] = useState(EMPTY);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [ticket, setTicket] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState('');
+  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   const onChange = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
+
+  const handlePhotoSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      setError('Format file tidak didukung. Gunakan JPG, PNG, atau WEBP.');
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      setError('Ukuran foto terlalu besar. Maksimal 5 MB.');
+      return;
+    }
+
+    setError('');
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setPhotoPreview(ev.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const clearPhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+  };
 
   const submit = async (event) => {
     event.preventDefault();
     setError('');
-    if (!/^\d{16}$/.test(form.nik.trim())) {
+
+    const nikTrim = form.nik.trim();
+    if (!/^\d{16}$/.test(nikTrim)) {
       setError('NIK harus terdiri dari 16 digit angka sesuai KTP.');
       return;
     }
+
+    const namaTrim = (form.nama || '').trim();
+    if (!namaTrim || namaTrim.length < 3) {
+      setError('Nama lengkap wajib diisi minimal 3 karakter.');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const res = await base44.functions.invoke('submitAspirasi', form);
-      if (res.data?.error) {
-        setError(res.data.error);
-      } else {
-        setTicket(res.data);
-        setForm(EMPTY);
+      const payload = { ...form };
+      if (photoFile) {
+        payload.foto_bukti = photoFile;
       }
+
+      const res = await base44.functions.invoke('submitAspirasi', payload);
+      const result = res?.data;
+
+      if (!result) {
+        setError('Gagal mengirim aspirasi: layanan tidak merespons. Silakan coba lagi.');
+        return;
+      }
+
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
+      if (result.message && !result.success) {
+        setError(result.message);
+        return;
+      }
+
+      const ticketData = result.data || (result.success && result.nomor_tiket ? result : null);
+
+      if (!result.success || !ticketData) {
+        setError('Gagal mengirim aspirasi. Silakan coba lagi.');
+        return;
+      }
+
+      if (ticketData?.no_telepon) {
+        try {
+          const status = 'Diterima';
+          const message = buildAspirasiTanggapanMessage(
+            {
+              nama: ticketData.nama || form.nama,
+              no_telepon: ticketData.no_telepon,
+              kategori: ticketData.kategori || form.kategori,
+              judul: ticketData.judul || form.judul,
+              nomor_tiket: ticketData.nomor_tiket,
+            },
+            '',
+            status
+          );
+          const waLink = buildWhatsAppLink(ticketData.no_telepon, message);
+          window.open(waLink, '_blank');
+        } catch (waErr) {
+          console.error('Gagal mengirim notifikasi WhatsApp:', waErr);
+        }
+      }
+
+      setTicket({ ...ticketData, nama: ticketData.nama || form.nama });
+      setForm(EMPTY);
+      clearPhoto();
     } catch (err) {
-      setError(err?.response?.data?.error || 'Gagal mengirim aspirasi. Silakan coba lagi.');
+      setError(err?.response?.data?.error || err?.message || 'Gagal mengirim aspirasi. Silakan coba lagi.');
     } finally {
       setSubmitting(false);
     }
@@ -156,6 +247,68 @@ export default function AspirasiForm() {
           onChange={(e) => onChange('isi', e.target.value)}
           placeholder="Jelaskan laporan, aspirasi, atau informasi yang dibutuhkan secara rinci (waktu, lokasi, dan kronologi)."
           className="mt-1.5"
+        />
+      </div>
+
+      <div>
+        <Label>Foto Bukti Pendukung (opsional)</Label>
+        <p className="text-xs text-muted-foreground mt-1 mb-2">
+          Unggah foto bukti laporan (JPG, PNG, WEBP, maks. 5 MB) atau ambil langsung dari kamera.
+        </p>
+
+        {photoPreview ? (
+          <div className="mt-2 relative inline-block">
+            <img
+              src={photoPreview}
+              alt="Preview foto bukti"
+              className="max-w-xs max-h-64 rounded-xl border border-border object-cover"
+            />
+            <button
+              type="button"
+              onClick={clearPhoto}
+              className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-destructive text-white flex items-center justify-center shadow-md hover:bg-destructive/90"
+              title="Hapus foto"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row gap-2 mt-1">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1"
+            >
+              <ImagePlus className="w-4 h-4 mr-1" />
+              Pilih File Foto
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => cameraInputRef.current?.click()}
+              className="flex-1"
+            >
+              <Camera className="w-4 h-4 mr-1" />
+              Ambil Foto Kamera
+            </Button>
+          </div>
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={handlePhotoSelect}
+          className="hidden"
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          capture="environment"
+          onChange={handlePhotoSelect}
+          className="hidden"
         />
       </div>
 

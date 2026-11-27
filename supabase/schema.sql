@@ -112,6 +112,9 @@ CREATE INDEX IF NOT EXISTS idx_website_setting_data ON "WebsiteSetting" USING GI
 CREATE INDEX IF NOT EXISTS idx_kontak_darurat_data ON "KontakDarurat" USING GIN (data);
 CREATE INDEX IF NOT EXISTS idx_app_settings_data ON "app_settings" USING GIN (data);
 
+-- Add foto_bukti column to Aspirasi table for storing photo evidence URLs
+ALTER TABLE "Aspirasi" ADD COLUMN IF NOT EXISTS foto_bukti TEXT;
+
 -- Verify tables and publication
 SELECT 
     schemaname,

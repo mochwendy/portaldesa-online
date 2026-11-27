@@ -1,8 +1,20 @@
 import React from 'react';
 
 export default function AspirasiDetailInfo({ aspirasi }) {
+  const fotoBukti = aspirasi?.foto_bukti || aspirasi?.foto || null;
+
   return (
     <>
+      {fotoBukti && (
+        <div className="rounded-xl overflow-hidden border border-border">
+          <img
+            src={fotoBukti}
+            alt={`Bukti foto aspirasi ${aspirasi?.nomor_tiket || ''}`}
+            className="w-full max-h-72 object-cover"
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
         <div>
           <p className="text-xs text-muted-foreground">Pelapor</p>

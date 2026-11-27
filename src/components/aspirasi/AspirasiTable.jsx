@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, Trash2 } from 'lucide-react';
+import { Eye, Trash2, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export const STATUS_STYLES = {
@@ -42,6 +42,7 @@ export default function AspirasiTable({ items, loading, onDetail, onDelete }) {
             <th className="text-left p-3 font-medium">Kategori</th>
             <th className="text-left p-3 font-medium">Judul</th>
             <th className="text-left p-3 font-medium">Status</th>
+            <th className="text-center p-3 font-medium">Bukti</th>
             <th className="text-center p-3 font-medium">Aksi</th>
           </tr>
         </thead>
@@ -69,6 +70,18 @@ export default function AspirasiTable({ items, loading, onDetail, onDelete }) {
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[item.status] || 'bg-muted'}`}>
                   {item.status}
                 </span>
+              </td>
+              <td className="p-3 text-center">
+                {item.foto_bukti && (
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-100 text-green-600" title="Ada foto bukti">
+                    <ImageIcon className="w-4 h-4" />
+                  </span>
+                )}
+                {!item.foto_bukti && (
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-muted text-muted-foreground" title="Tidak ada foto bukti">
+                    <ImageIcon className="w-4 h-4 opacity-40" />
+                  </span>
+                )}
               </td>
               <td className="p-3">
                 <div className="flex items-center justify-center gap-1">
