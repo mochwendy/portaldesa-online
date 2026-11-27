@@ -7,13 +7,74 @@ import { loadLocalData } from './localData';
 const STATS_TTL = 60 * 1000;
 let statsCache = null;
 let statsCacheAt = 0;
+let summaryCache = null;
 
 // Cek apakah sedang di localhost (tanpa Base44 backend)
 const IS_LOCALHOST = typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
+// Load pre-computed demografi summary (fast, <5KB)
+async function loadDemografiSummary() {
+  if (summaryCache) return summaryCache;
+  try {
+    const res = await fetch('/data/demografi_summary.json');
+    if (res.ok) {
+      summaryCache = await res.json();
+      return summaryCache;
+    }
+  } catch (e) {
+    console.warn('Failed to load demografi_summary.json', e);
+  }
+  return null;
+}
+
 export async function fetchPendudukStats({ force = false } = {}) {
   if (!force && statsCache && Date.now() - statsCacheAt < STATS_TTL) return statsCache;
+
+  // Fast path: load pre-computed summary JSON (<5KB, instant on Cloudflare Workers)
+  const summary = await loadDemografiSummary();
+  if (summary && !IS_LOCALHOST) {
+    // Check if localStorage has newer Penduduk data
+    let useSummary = true;
+    try {
+      const localPenduduk = localStorage.getItem('_Penduduk');
+      if (localPenduduk) {
+        const parsed = JSON.parse(localPenduduk);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Check if localStorage data is newer than summary
+          const summaryDate = new Date(summary.generatedAt).getTime();
+          const localDate = new Date(parsed[0].updated_date || 0).getTime();
+          if (localDate > summaryDate) {
+            useSummary = false; // localStorage has newer data
+          }
+        }
+      }
+    } catch (e) {
+      // ignore localStorage parse errors
+    }
+    
+    if (useSummary) {
+      const stats = {
+        total: summary.total,
+        totalKK: summary.totalKK || 0,
+        disabilitas: summary.disabilitas || 0,
+        lakiLaki: summary.lakiLaki,
+        perempuan: summary.perempuan,
+        usiaProduktif: summary.usiaProduktif,
+        gender: summary.gender || [],
+        usia: summary.usia || [],
+        pendidikan: summary.pendidikan || [],
+        pekerjaan: summary.pekerjaan || [],
+        perkawinan: summary.perkawinan || [],
+        keluarga: summary.keluarga || [],
+        agama: summary.agama || [],
+        wilayah: summary.wilayah || [],
+      };
+      statsCache = stats;
+      statsCacheAt = Date.now();
+      return stats;
+    }
+  }
 
   // Di localhost, langsung baca dari CSV lokal tanpa menghubungi API Base44
   if (IS_LOCALHOST) {
@@ -105,10 +166,33 @@ export async function fetchPendudukStats({ force = false } = {}) {
     statsCacheAt = Date.now();
     return stats;
   } catch (e) {
-    console.warn('API fetchPendudukStats failed, falling back to local CSV', e);
+    console.warn('API fetchPendudukStats failed, falling back to summary JSON', e);
   }
 
-  // Fallback ke CSV lokal (jika API produktif gagal)
+  // Fallback to summary JSON if available
+  if (summary) {
+    const stats = {
+      total: summary.total,
+      totalKK: summary.totalKK || 0,
+      disabilitas: summary.disabilitas || 0,
+      lakiLaki: summary.lakiLaki,
+      perempuan: summary.perempuan,
+      usiaProduktif: summary.usiaProduktif,
+      gender: summary.gender || [],
+      usia: summary.usia || [],
+      pendidikan: summary.pendidikan || [],
+      pekerjaan: summary.pekerjaan || [],
+      perkawinan: summary.perkawinan || [],
+      keluarga: summary.keluarga || [],
+      agama: summary.agama || [],
+      wilayah: summary.wilayah || [],
+    };
+    statsCache = stats;
+    statsCacheAt = Date.now();
+    return stats;
+  }
+
+  // Final fallback ke CSV lokal (jika API dan summary JSON gagal)
   const rows = await loadLocalData('Penduduk');
   const total = rows.length;
   const lakiLaki = rows.filter((r) => (r.jenis_kelamin || '').toLowerCase() === 'laki-laki').length;

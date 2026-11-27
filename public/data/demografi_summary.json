@@ -1,0 +1,306 @@
+{
+  "total": 12127,
+  "totalKK": 4090,
+  "disabilitas": 2,
+  "lakiLaki": 6132,
+  "perempuan": 5990,
+  "usiaProduktif": 8521,
+  "gender": [
+    {
+      "name": "Laki-laki",
+      "value": 6132
+    },
+    {
+      "name": "Perempuan",
+      "value": 5990
+    },
+    {
+      "name": "Tidak Diisi",
+      "value": 5
+    }
+  ],
+  "usia": [
+    {
+      "name": "25-44 Tahun",
+      "value": 3705
+    },
+    {
+      "name": "45-64 Tahun",
+      "value": 2922
+    },
+    {
+      "name": "15-24 Tahun",
+      "value": 1894
+    },
+    {
+      "name": "6-14 Tahun",
+      "value": 1538
+    },
+    {
+      "name": "65+ Tahun",
+      "value": 1151
+    },
+    {
+      "name": "Tidak Diketahui",
+      "value": 461
+    },
+    {
+      "name": "0-5 Tahun",
+      "value": 456
+    }
+  ],
+  "pendidikan": [
+    {
+      "name": "Lainnya",
+      "value": 4159
+    },
+    {
+      "name": "SD",
+      "value": 3178
+    },
+    {
+      "name": "SMA/SMK",
+      "value": 2106
+    },
+    {
+      "name": "SMP",
+      "value": 1387
+    },
+    {
+      "name": "Tidak/Belum Sekolah",
+      "value": 1104
+    },
+    {
+      "name": "S1",
+      "value": 171
+    },
+    {
+      "name": "Diploma",
+      "value": 15
+    },
+    {
+      "name": "S2/S3",
+      "value": 7
+    }
+  ],
+  "pekerjaan": [
+    {
+      "name": "MENGURUS RUMAH TANGGA",
+      "value": 2269
+    },
+    {
+      "name": "BURUH HARIAN LEPAS",
+      "value": 1873
+    },
+    {
+      "name": "BELUM/TIDAK BEKERJA",
+      "value": 1607
+    },
+    {
+      "name": "PELAJAR/MAHASISWA",
+      "value": 1523
+    },
+    {
+      "name": "KARYAWAN SWASTA",
+      "value": 316
+    },
+    {
+      "name": "WIRASWASTA",
+      "value": 146
+    },
+    {
+      "name": "PENSIUNAN",
+      "value": 47
+    },
+    {
+      "name": "PEGAWAI NEGRI SIPIL (PNS)",
+      "value": 36
+    },
+    {
+      "name": "GURU",
+      "value": 36
+    },
+    {
+      "name": "PETANI/PEKEBUN",
+      "value": 28
+    }
+  ],
+  "perkawinan": [
+    {
+      "name": "Tidak Diisi",
+      "value": 4161
+    },
+    {
+      "name": "Kawin",
+      "value": 4026
+    },
+    {
+      "name": "Belum Kawin",
+      "value": 3322
+    },
+    {
+      "name": "Cerai Mati",
+      "value": 404
+    },
+    {
+      "name": "Cerai Hidup",
+      "value": 214
+    }
+  ],
+  "keluarga": [
+    {
+      "name": "Anak",
+      "value": 4828
+    },
+    {
+      "name": "Kepala Keluarga",
+      "value": 4064
+    },
+    {
+      "name": "Istri",
+      "value": 3064
+    },
+    {
+      "name": "Famili Lain",
+      "value": 62
+    },
+    {
+      "name": "Cucu",
+      "value": 59
+    },
+    {
+      "name": "Lainnya",
+      "value": 20
+    },
+    {
+      "name": "Orang Tua",
+      "value": 17
+    },
+    {
+      "name": "Mertua",
+      "value": 13
+    }
+  ],
+  "agama": [
+    {
+      "name": "Islam",
+      "value": 8564
+    },
+    {
+      "name": "Tidak Diisi",
+      "value": 3559
+    },
+    {
+      "name": "Kristen",
+      "value": 4
+    }
+  ],
+  "wilayah": [
+    {
+      "name": "RW 001",
+      "value": 1253
+    },
+    {
+      "name": "RW 010",
+      "value": 963
+    },
+    {
+      "name": "RW 006",
+      "value": 797
+    },
+    {
+      "name": "RW 003",
+      "value": 746
+    },
+    {
+      "name": "RW 002",
+      "value": 739
+    },
+    {
+      "name": "RW 013",
+      "value": 604
+    },
+    {
+      "name": "RW 007",
+      "value": 572
+    },
+    {
+      "name": "RW 016",
+      "value": 550
+    },
+    {
+      "name": "RW 009",
+      "value": 546
+    },
+    {
+      "name": "RW 008",
+      "value": 512
+    },
+    {
+      "name": "RW 012",
+      "value": 503
+    },
+    {
+      "name": "RW 005",
+      "value": 480
+    },
+    {
+      "name": "RW 014",
+      "value": 468
+    },
+    {
+      "name": "RW 017",
+      "value": 447
+    },
+    {
+      "name": "RW 011",
+      "value": 372
+    },
+    {
+      "name": "RW 004",
+      "value": 367
+    },
+    {
+      "name": "RW 019",
+      "value": 347
+    },
+    {
+      "name": "RW 015",
+      "value": 342
+    },
+    {
+      "name": "RW 018",
+      "value": 331
+    },
+    {
+      "name": "RW 020",
+      "value": 303
+    },
+    {
+      "name": "RW 024",
+      "value": 258
+    },
+    {
+      "name": "RW 022",
+      "value": 249
+    },
+    {
+      "name": "RW 021",
+      "value": 198
+    },
+    {
+      "name": "RW 023",
+      "value": 178
+    },
+    {
+      "name": "RW 13",
+      "value": 1
+    },
+    {
+      "name": "RW 15",
+      "value": 1
+    }
+  ],
+  "generatedAt": "2026-11-27T10:08:20.604Z",
+  "source": "Penduduk_export.csv"
+}
