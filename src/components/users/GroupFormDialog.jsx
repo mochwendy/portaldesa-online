@@ -8,17 +8,30 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { AlertCircle, Loader2, Save } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertCircle, Loader2, Save, Shield, User, Users, Building2 } from 'lucide-react';
 import { serializePermissions } from '@/lib/adminModules';
+import { ROLES, ROLE_LABELS, ROLE_LEVELS, SUPER_ADMIN_CREDENTIALS } from '@/lib/AuthContext';
+import { useAuth } from '@/lib/AuthContext';
 
 const EMPTY = {
-  nama: '', kode: '', deskripsi: '', is_admin: false, required_app_id: false,
+  nama: '', kode: '', deskripsi: '', is_admin: false, required_app_id: false, role_level: 1,
 };
 
 export default function GroupFormDialog({ open, onOpenChange, group, onSaved }) {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === ROLES.SUPER_ADMIN || user?.email === SUPER_ADMIN_CREDENTIALS.email;
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Role options for dropdown
+  const roleOptions = [
+    { value: ROLE_LEVELS[ROLES.SUPER_ADMIN], label: ROLE_LABELS[ROLES.SUPER_ADMIN], icon: Shield, restricted: true },
+    { value: ROLE_LEVELS[ROLES.ADMIN_DESA], label: ROLE_LABELS[ROLES.ADMIN_DESA], icon: Building2 },
+    { value: ROLE_LEVELS[ROLES.OPERATOR], label: ROLE_LABELS[ROLES.OPERATOR], icon: Users },
+    { value: ROLE_LEVELS[ROLES.WARGA], label: ROLE_LABELS[ROLES.WARGA], icon: User },
+  ];
 
   useEffect(() => {
     if (!open) return;
@@ -29,8 +42,19 @@ export default function GroupFormDialog({ open, onOpenChange, group, onSaved }) 
       deskripsi: group.deskripsi || '',
       is_admin: Boolean(group.is_admin),
       required_app_id: Boolean(group.required_app_id),
+      role_level: group.role_level ?? 1,
     } : EMPTY);
   }, [open, group]);
+
+  // Auto-set is_admin when role_level changes
+  const setRoleLevel = (value) => {
+    const level = parseInt(value, 10);
+    setForm(prev => ({
+      ...prev,
+      role_level: level,
+      is_admin: level >= ROLE_LEVELS[ROLES.ADMIN_DESA],
+    }));
+  };
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -38,6 +62,11 @@ export default function GroupFormDialog({ open, onOpenChange, group, onSaved }) 
     setError('');
     if (!form.nama.trim() || !form.kode.trim()) {
       setError('Nama grup dan kode grup wajib diisi.');
+      return;
+    }
+    // Prevent non-super-admin from creating super_admin groups
+    if (!isSuperAdmin && form.role_level === ROLE_LEVELS[ROLES.SUPER_ADMIN]) {
+      setError('Hanya Super Admin yang dapat membuat grup dengan tingkat Super Admin.');
       return;
     }
     setSaving(true);
@@ -48,6 +77,7 @@ export default function GroupFormDialog({ open, onOpenChange, group, onSaved }) 
         deskripsi: form.deskripsi.trim(),
         is_admin: form.is_admin,
         required_app_id: form.required_app_id,
+        role_level: form.role_level,
       };
       if (group) {
         await base44.entities.UserGroup.update(group.id, payload);
@@ -112,6 +142,41 @@ export default function GroupFormDialog({ open, onOpenChange, group, onSaved }) 
               onChange={(e) => set('deskripsi', e.target.value)}
               placeholder="Uraikan hak akses dan tanggung jawab grup ini."
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="role-level">Tingkat Hierarki Peran</Label>
+            <Select
+              value={String(form.role_level)}
+              onValueChange={setRoleLevel}
+              disabled={!isSuperAdmin && form.role_level === ROLE_LEVELS[ROLES.SUPER_ADMIN]}
+            >
+              <SelectTrigger id="role-level" className="w-full" disabled={!isSuperAdmin}>
+                <SelectValue placeholder="Pilih tingkat hierarki" />
+              </SelectTrigger>
+              <SelectContent>
+                {roleOptions.map((opt) => (
+                  <SelectItem
+                    key={opt.value}
+                    value={String(opt.value)}
+                    disabled={!isSuperAdmin && opt.restricted}
+                    className="flex items-center gap-2"
+                  >
+                    <opt.icon className="w-4 h-4" />
+                    <span>{opt.label}</span>
+                    {!isSuperAdmin && opt.restricted && <span className="ml-auto text-xs text-muted-foreground">(Super Admin only)</span>}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!isSuperAdmin && (
+              <p className="text-xs text-muted-foreground">
+                Hanya Super Admin yang dapat menetapkan grup dengan tingkat Super Admin.
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Otomatis menentukan flag Is Admin: Level ≥ {ROLE_LEVELS[ROLES.ADMIN_DESA]} (Admin Desa) = Is Admin true.
+            </p>
           </div>
 
           <div className="border-t border-border pt-4 flex flex-wrap items-center gap-6">

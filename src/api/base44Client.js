@@ -390,14 +390,10 @@ async function invokeKelolaAkunAkses(params = {}) {
       // User entity may not exist, continue without it
     }
 
-    const visible = akunRows.filter((a) => {
-      const group = groupRows.find((g) => g.kode === a.grup_kode);
-      return group ? !group.is_admin : true;
-    });
-
+    // Return ALL accounts (including super admin) - filtering is done at UI layer
     return {
       data: {
-        items: visible.map((a) => ({
+        items: akunRows.map((a) => ({
           ...a,
           akun_login: byEmail[String(a.email || '').toLowerCase()] || null,
         })),
@@ -406,7 +402,94 @@ async function invokeKelolaAkunAkses(params = {}) {
     };
   }
 
-  // For other actions (save, set-group, delete), return mock success
+  if (action === 'save') {
+    const { nama, email, username, role, grup_kode, jabatan, status, password } = data;
+    const targetGroup = groupRows.find(g => g.kode === grup_kode);
+    const roleLevel = targetGroup?.role_level ?? 1;
+    const nextRole = roleLevel >= 2 ? 'admin' : 'user';
+
+    if (id) {
+      // Update existing
+      const idx = akunRows.findIndex(r => r.id === id);
+      if (idx >= 0) {
+        const group = groupRows.find(g => g.kode === grup_kode);
+        const updated = {
+          ...akunRows[idx],
+          nama,
+          email,
+          username,
+          role: nextRole,
+          grup_kode,
+          grup_nama: group?.nama || grup_kode,
+          user_group_id: grup_kode,
+          user_group: grup_kode,
+          jabatan,
+          status,
+          ...(password && { password }),
+        };
+        akunRows[idx] = updated;
+        persistRows('AkunAkses', akunRows);
+        return { data: { item: updated } };
+      }
+    } else {
+      // Create new
+      const group = groupRows.find(g => g.kode === grup_kode);
+      const newRow = {
+        id: crypto.randomUUID(),
+        nama,
+        email,
+        username,
+        role: nextRole,
+        grup_kode,
+        grup_nama: group?.nama || grup_kode,
+        user_group_id: grup_kode,
+        user_group: grup_kode,
+        jabatan,
+        status: status || 'Aktif',
+        password: password || '',
+        created_date: new Date().toISOString(),
+        updated_date: new Date().toISOString(),
+      };
+      akunRows.push(newRow);
+      persistRows('AkunAkses', akunRows);
+      return { data: { item: newRow } };
+    }
+  }
+
+  if (action === 'set-group') {
+    const { grup_kode } = data;
+    const targetGroup = groupRows.find(g => g.kode === grup_kode);
+    const roleLevel = targetGroup?.role_level ?? 1;
+    const nextRole = roleLevel >= 2 ? 'admin' : 'user';
+
+    const idx = akunRows.findIndex(r => r.id === id);
+    if (idx >= 0) {
+      const group = groupRows.find(g => g.kode === grup_kode);
+      const updated = {
+        ...akunRows[idx],
+        grup_kode,
+        grup_nama: group?.nama || grup_kode,
+        user_group_id: grup_kode,
+        user_group: grup_kode,
+        role: nextRole,
+      };
+      akunRows[idx] = updated;
+      persistRows('AkunAkses', akunRows);
+      return { data: { ok: true, grup_kode, role: nextRole } };
+    }
+    return { data: { error: 'Akun tidak ditemukan' } };
+  }
+
+  if (action === 'delete') {
+    const idx = akunRows.findIndex(r => r.id === id);
+    if (idx >= 0) {
+      akunRows.splice(idx, 1);
+      persistRows('AkunAkses', akunRows);
+      return { data: { ok: true } };
+    }
+    return { data: { error: 'Akun tidak ditemukan' } };
+  }
+
   return { data: { ok: true } };
 }
 

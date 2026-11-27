@@ -2,12 +2,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import GroupFormDialog from '@/components/users/GroupFormDialog';
 import GroupPermissionsDialog from '@/components/users/GroupPermissionsDialog';
 import {
-  Loader2, Plus, Pencil, X, ShieldCheck, ShieldAlert, KeyRound, Info,
+  Loader2, Plus, Pencil, X, ShieldCheck, ShieldAlert, KeyRound, Info, Shield, Building2, Users, User,
 } from 'lucide-react';
 import { ADMIN_MODULES, parsePermissions, countAllowedModules } from '@/lib/adminModules';
+import { ROLE_LABELS, ROLE_LEVELS } from '@/lib/AuthContext';
 
 export default function UserGroups() {
   const [groups, setGroups] = useState([]);
@@ -46,6 +48,26 @@ export default function UserGroups() {
     }
   };
 
+  // Derive role_level from group kode for CSV data that doesn't have role_level field
+  const deriveRoleLevel = (group) => {
+    // If role_level already exists, use it
+    if (group.role_level !== undefined && group.role_level !== null) {
+      return group.role_level;
+    }
+    // Derive from kode
+    const kode = group.kode || '';
+    switch (kode) {
+      case 'SU': return ROLE_LEVELS.SUPER_ADMIN;
+      case 'ADM':
+      case 'KADES': return ROLE_LEVELS.ADMIN_DESA;
+      case 'SEKDES': return ROLE_LEVELS.OPERATOR; // Sekdes is operator level
+      case 'STAF': return ROLE_LEVELS.OPERATOR;
+      case 'WARGA':
+      case 'GUEST': return ROLE_LEVELS.WARGA;
+      default: return ROLE_LEVELS.OPERATOR; // Default to operator
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -78,20 +100,37 @@ export default function UserGroups() {
             <tbody>
               {groups.map((group) => {
                 const allowed = countAllowedModules(parsePermissions(group.permissions));
+                // Derive role_level from kode if not set (for old CSV data)
+                const roleLevel = deriveRoleLevel(group);
+                // Determine role icon and badge based on role_level
+                const getRoleIcon = (level) => {
+                  if (level >= ROLE_LEVELS.SUPER_ADMIN) return <Shield className="w-3 h-3" />;
+                  if (level >= ROLE_LEVELS.ADMIN_DESA) return <Building2 className="w-3 h-3" />;
+                  if (level >= ROLE_LEVELS.OPERATOR) return <Users className="w-3 h-3" />;
+                  return <User className="w-3 h-3" />;
+                };
+                const getRoleBadge = (level) => {
+                  if (level >= ROLE_LEVELS.SUPER_ADMIN) return <Badge variant="default" className="bg-primary text-primary-foreground"><Shield className="w-3 h-3 mr-1" />Super Admin</Badge>;
+                  if (level >= ROLE_LEVELS.ADMIN_DESA) return <Badge variant="secondary"><Building2 className="w-3 h-3 mr-1" />Admin Desa</Badge>;
+                  if (level >= ROLE_LEVELS.OPERATOR) return <Badge variant="outline"><Users className="w-3 h-3 mr-1" />Operator</Badge>;
+                  return <Badge variant="outline"><User className="w-3 h-3 mr-1" />Warga</Badge>;
+                };
+                const isAdminGroup = roleLevel >= ROLE_LEVELS.ADMIN_DESA;
                 return (
                   <tr key={group.id} className="border-t border-border hover:bg-muted/20 align-top">
                     <td className="px-4 py-4">
                       <div className="flex items-start gap-2">
-                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${group.is_admin ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                          {group.is_admin ? <ShieldCheck className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${isAdminGroup ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                          {isAdminGroup ? <ShieldCheck className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
                         </div>
                         <div>
                           <p className="font-bold text-foreground">{group.nama}</p>
                           <p className="text-xs text-muted-foreground">ID#: {group.kode}</p>
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            {group.is_admin && (
+                          <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                            {getRoleBadge(roleLevel)}
+                            {isAdminGroup && (
                               <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                Is Admin
+                                Admin
                               </span>
                             )}
                             {group.required_app_id && (
@@ -150,7 +189,7 @@ export default function UserGroups() {
           <Info className="w-4 h-4 text-primary" /> Catatan Hak Akses
         </h3>
         <p className="text-sm text-muted-foreground">
-          Grup bertanda <span className="font-semibold text-foreground">Is Admin</span> otomatis memiliki seluruh hak akses.
+          Grup bertanda <span className="font-semibold text-foreground">Admin</span> (level ≥ Admin Desa) memiliki hak akses penuh.
           Untuk grup lain, menu pada sidebar admin hanya muncul sesuai centang modul yang diberikan, dan kode grup dipasang
           pada akun pengguna di halaman Pengaturan Akun Pengguna.
         </p>

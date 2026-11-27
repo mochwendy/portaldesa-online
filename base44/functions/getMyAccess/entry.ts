@@ -52,9 +52,33 @@ export default async function (req: Request): Promise<Response> {
     }
 
     // Hak akses seluruh modul dan menu hanya untuk grup Super Admin (is_admin).
-    const isAdmin = Boolean(group?.is_admin);
+    // Handle string "true"/"false" from CSV
+    const isAdmin = group && (String(group.is_admin).toLowerCase() === 'true' || group.kode === 'SU');
     const role = isAdmin ? 'admin' : 'user';
     const permissions = isAdmin ? null : parsePermissions(group?.permissions);
+
+    // Derive role_level from group kode since CSV lacks role_level column
+    const getRoleLevel = (kode) => {
+      switch (kode) {
+        case 'SU': return 3; // Super Admin
+        case 'ADM': return 2; // Admin Desa
+        case 'SEKDES':
+        case 'KADES': return 2; // Admin Desa level
+        case 'STAF': return 1; // Operator
+        case 'WARGA':
+        case 'GUEST':
+        default: return 0; // Warga
+      }
+    };
+
+    const roleLevel = group ? getRoleLevel(group.kode) : 0;
+    const roleLabels = {
+      3: 'Super Admin (Pemilik Aplikasi)',
+      2: 'Admin Desa (Administrator Tingkat Desa)',
+      1: 'Operator / Perangkat Desa (Kasi, Kaur, Staff)',
+      0: 'Pengguna Umum / Warga',
+    };
+    const roleLabel = roleLabels[roleLevel] || 'Pengguna';
 
     return Response.json({
       restricted: !terdaftar || !isAdmin,
@@ -67,6 +91,10 @@ export default async function (req: Request): Promise<Response> {
         full_name: akun?.nama || record?.full_name || user.full_name || '',
         email: akun?.email || record?.email || user.email || '',
         role,
+        role_level: roleLevel,
+        role_label: roleLabel,
+        grup_kode: group?.kode || '',
+        grup_nama: group?.nama || '',
         username: akun?.username || '',
         jabatan: akun?.jabatan || record?.jabatan || '',
       },

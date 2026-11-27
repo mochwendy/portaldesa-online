@@ -1,15 +1,34 @@
-import React, { useState } from 'react';
-import { Outlet, NavLink, useLocation, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Outlet, NavLink, useLocation, Link, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, FileText, Wallet, Store,
   Megaphone, Building2, Share2, Menu, ShieldCheck,
   Newspaper, UserCog, Globe, ClipboardList, Navigation, HardHat,
-  ShieldAlert, Loader2, UserRound, MessagesSquare, LogOut, Phone
+  ShieldAlert, Loader2, UserRound, MessagesSquare, LogOut, Phone, Sliders
 } from 'lucide-react';
-import { useAuth } from '@/lib/AuthContext';
+import { useAuth, SUPER_ADMIN_CREDENTIALS, ROLE_LEVELS, ROLE_LABELS } from '@/lib/AuthContext';
 import useAccessPermissions from '@/hooks/useAccessPermissions';
 import AkunBelumTerdaftar from '@/components/admin/AkunBelumTerdaftar';
 import PortalNotifications from '@/components/admin/PortalNotifications';
+
+const ALL_MODULES = {
+  dashboard: 'Dashboard',
+  penduduk: 'Data Penduduk',
+  surat: 'Layanan Surat',
+  apbdes: 'Transparansi APBDes',
+  pembangunan: 'Usulan Pembangunan',
+  umkm: 'UMKM & BUMDes',
+  berita: 'Berita Desa',
+  aspirasi: 'Aspirasi Warga',
+  kontak_darurat: 'Nomor Darurat',
+  profil: 'Profil Desa',
+  integrasi: 'Integrasi Sistem',
+  menu_portal: 'Pengaturan Menu Portal',
+  website: 'Pengaturan Aplikasi',
+  pengguna_grup: 'Grup Pengguna',
+  pengguna_akun: 'Akun Pengguna',
+  manajemen_modul: 'Kontrol Modul Aplikasi',
+};
 
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true, module: 'dashboard' },
@@ -36,24 +55,80 @@ const navItems = [
       { to: '/admin/pengguna/akun', label: 'Akun Pengguna', icon: UserCog, module: 'pengguna_akun' },
     ],
   },
+  { to: '/admin/manajemen-modul', label: 'Kontrol Modul Aplikasi', icon: Sliders, module: 'manajemen_modul', superAdminOnly: true },
 ];
 
 export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
-  const { canAccess, group, user, loading, terdaftar, alasan } = useAccessPermissions();
+  const navigate = useNavigate();
+  const { canAccess, group, user, loading, terdaftar, alasan, logout } = useAccessPermissions();
 
-  const allItems = navItems.flatMap((item) => (item.children ? item.children : [item]));
+  // 4-tier role hierarchy: super_admin (3) > admin_desa (2) > operator (1) > warga (0)
+  // Super admin: full access without filter
+  // All other groups (ADM, KADES, SEKDES, STAF, WARGA): MUST follow group.permissions strictly
+  const isSuperAdmin = user?.role_level === ROLE_LEVELS.SUPER_ADMIN || user?.email === SUPER_ADMIN_CREDENTIALS.email;
+  const roleLabel = isSuperAdmin ? 'Super Admin' : user?.role_label || 'Pengguna';
+
+  // Get enabled modules from localStorage (set by Super Admin in Kontrol Modul Aplikasi)
+  const [enabledModules, setEnabledModules] = useState(() => {
+    try {
+      const stored = localStorage.getItem('simdesta_enabled_modules');
+      return stored ? JSON.parse(stored) : Object.keys(ALL_MODULES);
+    } catch {
+      return Object.keys(ALL_MODULES);
+    }
+  });
+
+  // For super-admin: show ALL items without any filtering
+  // For ALL other groups (including Admin Desa): filter by enabled_modules AND group.permissions
+  const filteredNavItems = isSuperAdmin
+    ? navItems
+    : navItems.filter((item) => {
+        // Super admin only items (Kontrol Modul Aplikasi)
+        if (item.superAdminOnly) return false;
+
+        // Check if module is enabled
+        if (item.module) {
+          // Always allow dashboard
+          if (item.module === 'dashboard') return true;
+          // Check if module is in enabled list (simdesta_enabled_modules)
+          if (!enabledModules.includes(item.module)) return false;
+        }
+
+        // For children groups
+        if (item.children) {
+          const hasAccessibleChildren = item.children.some((child) => {
+            if (child.superAdminOnly) return false;
+            if (child.module) {
+              if (child.module === 'dashboard') return true;
+              if (!enabledModules.includes(child.module)) return false;
+            }
+            // All non-super-admin groups must follow permissions
+            return canAccess(child.module);
+          });
+          return hasAccessibleChildren;
+        }
+
+        // All non-super-admin groups must follow permissions
+        return canAccess(item.module);
+      });
+
+  const allItems = filteredNavItems.flatMap((item) => (item.children ? item.children : [item]));
   const currentModule = allItems.find((item) => item.to === location.pathname)?.module;
-  const blocked = !loading && currentModule && !canAccess(currentModule);
+  // Block access if not super-admin and no permission
+  const blocked = !loading && currentModule && !canAccess(currentModule) && !isSuperAdmin;
+  
   const pageLabel = allItems.find((item) => item.to === location.pathname)?.label || 'SIMDESTA';
-  const accountLabel = group?.nama || 'Tanpa Grup';
-  const roleLabel = user?.role === 'admin' ? 'Admin' : user?.role || 'Pengguna';
+  const accountLabel = isSuperAdmin ? 'Super Admin' : (group?.nama || 'Tanpa Grup');
 
   // Area admin hanya untuk akun yang didaftarkan admin desa dan berstatus aktif.
   if (!loading && terdaftar === false) {
     return <AkunBelumTerdaftar alasan={alasan} email={user?.email} />;
   }
+
+  // Check if current route is a disabled module (for non-super-admin)
+  const isDisabledModule = !isSuperAdmin && currentModule && currentModule !== 'dashboard' && !enabledModules.includes(currentModule);
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -81,9 +156,19 @@ export default function Layout() {
               <Loader2 className="w-5 h-5 animate-spin text-primary-foreground/40" />
             </div>
           )}
-          {!loading && navItems.map((item) => {
+          {!loading && filteredNavItems.map((item) => {
             if (item.children) {
-              const children = item.children.filter((child) => canAccess(child.module));
+              // For super admin, show ALL children without any filtering
+              const children = isSuperAdmin
+                ? item.children
+                : item.children.filter((child) => {
+                    if (child.superAdminOnly) return false;
+                    if (child.module) {
+                      if (child.module === 'dashboard') return true;
+                      if (!enabledModules.includes(child.module)) return false;
+                    }
+                    return canAccess(child.module);
+                  });
               if (children.length === 0) return null;
               return (
                 <div key={item.label} className="pt-2 space-y-1">
@@ -101,8 +186,7 @@ export default function Layout() {
                           isActive
                             ? 'bg-orange-500 text-orange-100 shadow-md'
                             : 'text-teal-100/70 hover:bg-white/10 hover:text-primary-foreground'
-                        }`
-                      }
+                        }`}
                     >
                       <child.icon className="w-4 h-4 flex-shrink-0" />
                       {child.label}
@@ -112,8 +196,7 @@ export default function Layout() {
               );
             }
 
-            if (!canAccess(item.module)) return null;
-
+            // For super admin, show ALL items without any filtering (already filtered in filteredNavItems)
             return (
               <NavLink
                 key={item.to}
@@ -125,8 +208,7 @@ export default function Layout() {
                     isActive
                       ? 'bg-orange-500 text-orange-100 shadow-md'
                       : 'text-teal-100/70 hover:bg-white/10 hover:text-primary-foreground'
-                  }`
-                }
+                  }`}
               >
                 <item.icon className="w-5 h-5 flex-shrink-0" />
                 {item.label}
@@ -142,9 +224,11 @@ export default function Layout() {
             </div>
             <div className="min-w-0 text-xs">
               <p className="font-semibold text-primary-foreground truncate">
-                {user?.full_name || 'Pengguna'}
+                {isSuperAdmin ? 'Pemilik Aplikasi' : (user?.full_name || 'Pengguna')}
               </p>
-              <p className="text-primary-foreground/55 truncate">{accountLabel} · {roleLabel}</p>
+              <p className="text-primary-foreground/55 truncate">
+                {isSuperAdmin ? 'Pemilik Aplikasi — Super Admin' : `${accountLabel} · ${roleLabel}`}
+              </p>
             </div>
           </div>
           <div className="flex flex-col gap-2 w-full">
@@ -157,13 +241,13 @@ export default function Layout() {
             </Link>
             <button
               onClick={() => {
-                const { logout } = useAuth();
                 logout(false);
+                navigate('/login', { replace: true });
               }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-destructive text-destructive text-sm font-semibold hover:bg-destructive/90 transition-colors shadow-lg w-full justify-center"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 text-sm font-semibold transition-colors w-full justify-center"
             >
               <LogOut className="w-4 h-4" />
-              Keluar
+              Keluar / Logout
             </button>
           </div>
         </div>
@@ -189,7 +273,25 @@ export default function Layout() {
         </header>
 
         <div className="flex-1 p-4 lg:p-8 max-w-7xl mx-auto w-full">
-          {blocked ? (
+          {isDisabledModule ? (
+            <div className="max-w-md mx-auto mt-16 bg-card border border-border rounded-2xl p-8 text-center shadow-sm">
+              <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+                <ShieldAlert className="w-7 h-7 text-destructive" />
+              </div>
+              <h2 className="font-heading font-bold text-lg text-foreground">Modul Ini Dinonaktifkan</h2>
+              <p className="text-sm text-muted-foreground mt-2">
+                Modul <span className="font-semibold text-foreground">{ALL_MODULES[currentModule] || currentModule}</span> telah dinonaktifkan oleh Pemilik Aplikasi (Super Admin).
+                <br />
+                Silakan hubungi Super Admin jika Anda memerlukan akses ke modul ini.
+              </p>
+              <Link
+                to="/admin"
+                className="inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90"
+              >
+                <LayoutDashboard className="w-4 h-4" /> Kembali ke Dashboard
+              </Link>
+            </div>
+          ) : blocked ? (
             <div className="max-w-md mx-auto mt-16 bg-card border border-border rounded-2xl p-8 text-center shadow-sm">
               <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
                 <ShieldAlert className="w-7 h-7 text-destructive" />

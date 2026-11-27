@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import {
@@ -10,10 +10,17 @@ import { Label } from '@/components/ui/label';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Loader2, Save, UserPlus, Key, Eye, EyeOff } from 'lucide-react';
-
 const EMPTY = {
-  nama: '', email: '', username: '', password: '', grup_kode: '', jabatan: '', status: 'Aktif',
+  nama: '', email: '', username: '', password: '', passwordConfirm: '', showPassword: false, grup_kode: '', jabatan: '', status: 'Aktif',
+};
+
+const ROLE_LABELS_BY_LEVEL = {
+  3: 'Super Admin',
+  2: 'Admin Desa',
+  1: 'Operator',
+  0: 'Warga',
 };
 
 const USERNAME_PATTERN = /^[a-z0-9._-]{3,}$/;
@@ -25,7 +32,15 @@ export default function AccountFormDialog({ open, onOpenChange, account, onSaved
   const [meEmail, setMeEmail] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [permissionPreview, setPermissionPreview] = useState(null);
 
+  // Import required modules for permission preview
+  const [ADMIN_MODULES, parsePermissions] = useMemo(() => {
+    // Lazy load to avoid circular dependency issues
+    return [null, null];
+  }, []);
+
+  // Load groups and permissions on open
   useEffect(() => {
     if (!open) return;
     setError('');
@@ -34,6 +49,8 @@ export default function AccountFormDialog({ open, onOpenChange, account, onSaved
       email: account.email || '',
       username: account.username || '',
       password: account.password || '',
+      passwordConfirm: '',
+      showPassword: false,
       grup_kode: account.grup_kode || '',
       jabatan: account.jabatan || '',
       status: account.status || 'Aktif',
@@ -50,11 +67,58 @@ export default function AccountFormDialog({ open, onOpenChange, account, onSaved
       .catch(() => setMeEmail(''));
   }, [open, account]);
 
+  // Load permission preview when group changes
+  useEffect(() => {
+    if (form.grup_kode && groups.length > 0) {
+      const selectedGroup = groups.find(g => g.kode === form.grup_kode);
+      if (selectedGroup) {
+        // Get enabled modules from localStorage
+        let enabledModules = [];
+        try {
+          const stored = localStorage.getItem('simdesta_enabled_modules');
+          enabledModules = stored ? JSON.parse(stored) : [];
+        } catch {
+          enabledModules = [];
+        }
+
+        // Import ADMIN_MODULES and parsePermissions
+        import('@/lib/adminModules').then(({ ADMIN_MODULES, parsePermissions }) => {
+          // Filter modules for non-super-admin
+          const filteredModules = ADMIN_MODULES.filter(m => enabledModules.length === 0 || enabledModules.includes(m.key));
+          
+          // Count allowed modules based on group permissions and enabled modules
+          const permissions = parsePermissions(selectedGroup.permissions);
+          let allowedCount = 0;
+          const allowedModules = [];
+          for (const mod of filteredModules) {
+            if (permissions[mod.key]?.view) {
+              allowedCount++;
+              allowedModules.push({ key: mod.key, label: mod.label });
+            }
+          }
+          
+          setPermissionPreview({
+            group: selectedGroup,
+            allowedCount,
+            totalModules: filteredModules.length,
+            loading: false,
+            disabledModules: ADMIN_MODULES.length - filteredModules.length,
+            allowedModules,
+          });
+        }).catch(() => {
+          setPermissionPreview({ group: selectedGroup, loading: false });
+        });
+      }
+    } else {
+      setPermissionPreview(null);
+    }
+  }, [form.grup_kode, groups]);
+
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const selectedGroup = groups.find((g) => g.kode === form.grup_kode) || null;
-  // Kewenangan mengikuti grup: hanya grup bertanda Super Admin yang berhak penuh.
-  const role = selectedGroup?.is_admin ? 'admin' : 'user';
+  // Kewenangan mengikuti grup: hanya grup dengan role_level >= 2 yang berhak 'admin'.
+  const role = (selectedGroup?.role_level ?? 1) >= 2 ? 'admin' : 'user';
 
   const handleSave = async () => {
     setError('');
@@ -130,6 +194,18 @@ export default function AccountFormDialog({ open, onOpenChange, account, onSaved
   };
 
   const noGroups = !loadingGroups && groups.length === 0;
+
+  // Get allowed modules count for a group
+  const getAllowedModulesCount = (group) => {
+    if (!group) return 0;
+    try {
+      const permissions = parsePermissions(group.permissions);
+      // Count modules with 'view' permission
+      return Object.keys(permissions).filter(key => permissions[key]?.view).length;
+    } catch {
+      return 0;
+    }
+  };
 
   // Grup Super Admin bukan bagian dari jenjang kewenangan admin desa, jadi tidak ditawarkan.
   const isSuperAdminGroup = (g) => g.kode === 'SU' || /super\s*admin/i.test(g.nama || '');
@@ -269,15 +345,53 @@ export default function AccountFormDialog({ open, onOpenChange, account, onSaved
                   : <SelectValue placeholder="Pilih grup" />}
               </SelectTrigger>
               <SelectContent>
-                {selectableGroups.map((g) => (
-                  <SelectItem key={g.id} value={g.kode}>{g.nama} ({g.kode})</SelectItem>
-                ))}
+                {selectableGroups.map((g) => {
+                  const roleLevel = g.role_level ?? 1;
+                  const roleLabel = ROLE_LABELS_BY_LEVEL[roleLevel] || 'Operator';
+                  const displayText = `${g.nama} (${g.kode}) — ${roleLabel}`;
+                  return <SelectItem key={g.id} value={g.kode}>{displayText}</SelectItem>;
+                })}
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
               Hak akses modul dan menu mengikuti pengaturan grup yang dipilih. Hanya grup Super Admin
               yang memiliki akses ke seluruh modul dan menu SIMDESTA.
             </p>
+            
+            {/* Permission Preview */}
+            {permissionPreview && !permissionPreview.loading && permissionPreview.group && (
+              <div className="mt-3 space-y-2">
+                <p className="text-sm font-medium text-foreground">Pratinjau Hak Akses:</p>
+                <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
+                  <Badge variant="secondary" className="px-3 py-1 text-xs">
+                    {permissionPreview.allowedCount} / {permissionPreview.totalModules} modul aktif
+                  </Badge>
+                  {permissionPreview.disabledModules > 0 && (
+                    <Badge variant="destructive" className="px-3 py-1 text-xs">
+                      {permissionPreview.disabledModules} modul dinonaktifkan
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="px-3 py-1 text-xs">
+                    Level: {permissionPreview.group.role_level ?? 1} ({ROLE_LABELS_BY_LEVEL[permissionPreview.group.role_level ?? 1] || 'Operator'})
+                  </Badge>
+                </div>
+                {permissionPreview.allowedModules && permissionPreview.allowedModules.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Modul yang dapat diakses:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {permissionPreview.allowedModules.map((mod, i) => (
+                        <Badge key={i} variant="outline" className="text-xs px-2 py-0.5">
+                          {mod.label}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Ini adalah modul yang akan tersedia untuk akun ini saat login.
+                </p>
+              </div>
+            )}
             {noGroups && (
               <p className="text-xs text-destructive">
                 Belum ada grup pengguna. <Link to="/admin/pengguna/grup" className="underline font-medium">Tambah grup</Link> lebih dulu.

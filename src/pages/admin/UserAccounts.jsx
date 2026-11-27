@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -8,11 +8,14 @@ import {
 } from '@/components/ui/select';
 import AccountFormDialog from '@/components/users/AccountFormDialog';
 import {
-  Loader2, UserPlus, Pencil, Trash2, UsersRound, ShieldCheck, UserCheck, KeyRound, Info,
+  Loader2, UserPlus, Pencil, Trash2, UsersRound, ShieldCheck, UserCheck, KeyRound, Info, Shield, AlertTriangle, ShieldAlert,
 } from 'lucide-react';
+import { ROLE_LEVELS, ROLE_LABELS } from '@/lib/AuthContext';
+import { useAuth } from '@/lib/AuthContext';
 import { ROLE_STYLES } from '@/lib/userRoles';
 
 export default function UserAccounts() {
+  const { user } = useAuth();
   const [rows, setRows] = useState([]);
   const [groups, setGroups] = useState([]);
   const [me, setMe] = useState(null);
@@ -24,6 +27,38 @@ export default function UserAccounts() {
   const [updatingId, setUpdatingId] = useState(null);
   const [sendingId, setSendingId] = useState(null);
 
+  // Helper: derive role_level from group kode since CSV doesn't have role_level column
+  const getRoleLevel = (kode) => {
+    switch (kode) {
+      case 'SU': return 3; // Super Admin
+      case 'ADM': return 2; // Admin Desa
+      case 'SEKDES':
+      case 'KADES': return 2; // Admin Desa level
+      case 'STAF': return 1; // Operator
+      case 'WARGA':
+      case 'GUEST':
+      default: return 0; // Warga
+    }
+  };
+
+  // Helper: check if group is admin (Super Admin) - handle string "true"/"false" from CSV
+  const isAdminGroup = (g) => String(g.is_admin).toLowerCase() === 'true' || g.kode === 'SU';
+
+  // Check if current user is super_admin
+  const isCurrentUserSuperAdmin = user?.role_level === ROLE_LEVELS.SUPER_ADMIN || user?.email === 'superadmin@simdesta.id';
+
+  // Pre-process groups with role labels for display
+  const groupsWithLabels = useMemo(() => {
+    return groups.map(g => ({
+      ...g,
+      roleLevel: getRoleLevel(g.kode),
+      roleLabel: getRoleLevel(g.kode) >= ROLE_LEVELS.SUPER_ADMIN ? ROLE_LABELS.SUPER_ADMIN :
+                getRoleLevel(g.kode) >= ROLE_LEVELS.ADMIN_DESA ? ROLE_LABELS.ADMIN_DESA :
+                getRoleLevel(g.kode) >= ROLE_LEVELS.OPERATOR ? ROLE_LABELS.OPERATOR :
+                ROLE_LABELS.WARGA
+    }));
+  }, [groups]);
+
   const load = useCallback(async () => {
     try {
       const [akunRes, groupRes, meRes] = await Promise.allSettled([
@@ -33,10 +68,11 @@ export default function UserAccounts() {
       ]);
 
       const akunData = akunRes.status === 'fulfilled' ? (akunRes.value || {}) : {};
-      const akunItems = Array.isArray(akunData?.items) ? akunData.items : [];
+      let akunItems = Array.isArray(akunData?.items) ? akunData.items : [];
       const groupItems = groupRes.status === 'fulfilled' ? (Array.isArray(groupRes.value) ? groupRes.value : []) : [];
       const currentUser = meRes.status === 'fulfilled' ? meRes.value : null;
 
+      // akunItems already comes from localStorage (persisted) via the updated invokeKelolaAkunAkses
       setRows(akunItems);
       setGroups(groupItems);
       setIsSuperAdmin(Boolean(akunData.is_super_admin));
@@ -98,10 +134,27 @@ export default function UserAccounts() {
   }
 
   const activeCount = rows.filter((r) => (r.status || 'Aktif') === 'Aktif').length;
-  const isSuperGroup = (kode) => Boolean(groups.find((g) => g.kode === kode)?.is_admin);
-  const adminCount = rows.filter((r) => isSuperGroup(r.grup_kode)).length;
+  const inactiveCount = rows.filter((r) => (r.status || 'Aktif') !== 'Aktif').length;
+  // Super Admin count: only accounts with grup_kode === 'SU' or role === 'super_admin'
+  const superAdminCount = rows.filter((r) => r.grup_kode === 'SU' || r.role === 'super_admin').length;
+
   // Grup Super Admin hanya ditampilkan untuk Super Admin.
-  const selectableGroups = isSuperAdmin ? groups : groups.filter((g) => !g.is_admin);
+  const selectableGroups = isSuperAdmin ? groups : groups.filter((g) => !isAdminGroup(g));
+
+  // Super Admin system account (always at top for super_admin users)
+  const superAdminAccount = {
+    id: 'super-admin-system',
+    nama: 'Pemilik Aplikasi',
+    email: 'superadmin@simdesta.id',
+    username: 'superadmin',
+    grup_kode: 'SU',
+    jabatan: 'Pemilik Aplikasi',
+    status: 'Aktif',
+    _isSystemAccount: true,
+  };
+
+  // Display rows: super admin account at top if current user is super_admin
+  const displayRows = isCurrentUserSuperAdmin ? [superAdminAccount, ...rows] : rows;
 
   return (
     <div className="space-y-6">
@@ -114,12 +167,17 @@ export default function UserAccounts() {
         </Button>
       </PageHeader>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {(isCurrentUserSuperAdmin ? [
+          { label: 'Total Akun', value: rows.length + 1, icon: UsersRound }, // +1 for system account
+          { label: 'Akun Aktif', value: activeCount + 1, icon: UserCheck }, // +1 for system account
+          { label: 'Super Admin', value: superAdminCount, icon: ShieldCheck },
+          { label: 'Akun Nonaktif', value: inactiveCount, icon: ShieldAlert },
+        ] : [
           { label: 'Total Akun', value: rows.length, icon: UsersRound },
           { label: 'Akun Aktif', value: activeCount, icon: UserCheck },
-          { label: 'Super Admin', value: adminCount, icon: ShieldCheck },
-        ].map((stat) => (
+          { label: 'Akun Nonaktif', value: inactiveCount, icon: ShieldAlert },
+        ]).map((stat) => (
           <div key={stat.label} className="bg-card rounded-xl border border-border p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
               <stat.icon className="w-5 h-5" />
@@ -147,20 +205,37 @@ export default function UserAccounts() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => {
+              {displayRows.map((row) => {
                 const isMe = me && row.akun_login && row.akun_login.id === me.id;
-                const isSuper = isSuperGroup(row.grup_kode);
-                const role = isSuper ? 'admin' : 'user';
+                const isSystemAccount = row._isSystemAccount === true;
+                
+                const rowGroup = groups.find(g => g.kode === row.grup_kode);
+                const roleLevel = isSystemAccount ? 3 : (rowGroup ? getRoleLevel(rowGroup.kode) : getRoleLevel(row.grup_kode));
+                const isSuper = roleLevel >= 3;
+                const role = roleLevel >= 2 ? 'admin' : 'user';
                 const status = row.status || 'Aktif';
+                const roleLabel = roleLevel >= 3 ? 'Super Admin' :
+                                  roleLevel >= 2 ? 'Admin Desa' :
+                                  roleLevel >= 1 ? 'Operator' : 'Warga';
+
+                // For system account, override with fixed values
+                const displayRoleLabel = isSystemAccount ? 'Super Admin (Sistem)' : roleLabel;
+                const displayRole = isSystemAccount ? 'admin' : role;
+                const displayGrupNama = isSystemAccount ? 'Super Admin (SU)' : (rowGroup?.nama || row.grup_kode || 'Tanpa Grup');
+
                 return (
-                  <tr key={row.id} className="border-t border-border hover:bg-muted/20">
+                  <tr key={row.id} className={`border-t border-border hover:bg-muted/20 ${isSystemAccount ? 'bg-amber-50/30' : ''}`}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold text-sm">
                           {(row.nama || row.email || '?').charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-medium">{row.nama || 'Belum diatur'}{isMe ? ' · Anda' : ''}</p>
+                          <p className="font-medium">
+                            {row.nama || 'Belum diatur'}
+                            {isMe ? ' · Anda' : ''}
+                            {isSystemAccount && <span className="ml-2 text-xs text-amber-600 font-medium">(Sistem)</span>}
+                          </p>
                           <p className="text-xs text-muted-foreground">{row.jabatan || 'Jabatan belum diisi'}</p>
                         </div>
                       </div>
@@ -173,70 +248,88 @@ export default function UserAccounts() {
                       </p>
                     </td>
                     <td className="px-4 py-3">
-                      <Select
-                        value={row.grup_kode || 'none'}
-                        onValueChange={(v) => handleGroupChange(row, v)}
-                        disabled={updatingId === row.id}
-                      >
-                        <SelectTrigger className="w-44">
-                          {updatingId === row.id
-                            ? <Loader2 className="w-4 h-4 animate-spin" />
-                            : <SelectValue placeholder="Pilih grup" />}
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Tanpa grup</SelectItem>
-                          {selectableGroups.map((g) => (
-                            <SelectItem key={g.id} value={g.kode}>{g.nama}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {isSystemAccount ? (
+                        <span className="text-sm text-muted-foreground">{displayGrupNama}</span>
+                      ) : (
+                        <Select
+                          value={row.grup_kode || 'none'}
+                          onValueChange={(v) => handleGroupChange(row, v)}
+                          disabled={updatingId === row.id}
+                        >
+                          <SelectTrigger className="w-44">
+                            {updatingId === row.id
+                              ? <Loader2 className="w-4 h-4 animate-spin" />
+                              : <SelectValue placeholder="Pilih grup" />}
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Tanpa grup</SelectItem>
+                            {selectableGroups.map((g) => (
+                              <SelectItem key={g.id} value={g.kode}>{g.nama}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_STYLES[role] || ROLE_STYLES.user}`}>
-                        {isSuper ? 'Super Admin' : 'Pengguna / Staf'}
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_STYLES[displayRole] || ROLE_STYLES.user}`}>
+                        {displayRoleLabel}
                       </span>
+                      {isSystemAccount && (
+                        <Badge variant="outline" className="ml-2 px-2 py-0.5 text-[10px] border-amber-300 text-amber-700 bg-amber-50">
+                          <Shield className="w-3 h-3 inline mr-1" /> Akun Sistem Terproteksi
+                        </Badge>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant={status === 'Aktif' ? 'default' : 'secondary'}>{status}</Badge>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => { setEditing(row); setFormOpen(true); }}
-                          title="Edit akun"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleSendPassword(row)}
-                          disabled={sendingId === row.id}
-                          title="Kirim tautan atur kata sandi"
-                        >
-                          {sendingId === row.id
-                            ? <Loader2 className="w-4 h-4 animate-spin" />
-                            : <KeyRound className="w-4 h-4" />}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(row)}
-                          disabled={deletingId === row.id || isMe}
-                          title={isMe ? 'Tidak dapat menghapus akun sendiri' : 'Hapus akun'}
-                        >
-                          {deletingId === row.id
-                            ? <Loader2 className="w-4 h-4 animate-spin" />
-                            : <Trash2 className="w-4 h-4 text-destructive" />}
-                        </Button>
+                        {!isSystemAccount && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => { setEditing(row); setFormOpen(true); }}
+                              title="Edit akun"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleSendPassword(row)}
+                              disabled={sendingId === row.id}
+                              title="Kirim tautan atur kata sandi"
+                            >
+                              {sendingId === row.id
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <KeyRound className="w-4 h-4" />}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(row)}
+                              disabled={deletingId === row.id || isMe}
+                              title={isMe ? 'Tidak dapat menghapus akun sendiri' : 'Hapus akun'}
+                            >
+                              {deletingId === row.id
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <Trash2 className="w-4 h-4 text-destructive" />}
+                            </Button>
+                          </>
+                        )}
+                        {isSystemAccount && (
+                          <Button variant="ghost" size="icon" disabled title="Akun sistem tidak dapat dikelola">
+                            <AlertTriangle className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
                 );
               })}
-              {rows.length === 0 && (
+              {rows.length === 0 && !isCurrentUserSuperAdmin && (
                 <tr>
                   <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                     Belum ada akun terdaftar. Tambahkan akun pertama Anda.

@@ -127,14 +127,15 @@ export default async function (req: Request): Promise<Response> {
         }, { status: 400 });
       }
 
-      // Kewenangan akun diturunkan dari grup: hanya grup Super Admin yang berhak penuh.
+      // Kewenangan akun diturunkan dari grup: role_level >= 2 (Admin Desa/Super Admin) = admin, else user.
       const targetGroupRes = await base44.asServiceRole.entities.UserGroup
         .filter({ kode: grupKode }, { limit: 1 });
       const targetGroup = targetGroupRes?.items?.[0] || null;
       if (!targetGroup) {
         return Response.json({ error: 'Grup pengguna tidak ditemukan.' }, { status: 400 });
       }
-      const nextRole = targetGroup.is_admin ? 'admin' : 'user';
+      const roleLevel = targetGroup.role_level ?? 1;
+      const nextRole = roleLevel >= 2 ? 'admin' : 'user';
       if (adminCodes.includes(grupKode) && !isSuperAdmin) {
         return Response.json({
           error: 'Grup Super Admin hanya dapat diberikan oleh Super Admin.',
@@ -206,11 +207,12 @@ export default async function (req: Request): Promise<Response> {
         }, { status: 403 });
       }
 
-      // Kewenangan mengikuti grup tujuan: hanya grup Super Admin yang berhak penuh.
+      // Kewenangan mengikuti grup tujuan: role_level >= 2 (Admin Desa/Super Admin) = admin, else user.
       const targetGroupRes = grupKode
         ? await base44.asServiceRole.entities.UserGroup.filter({ kode: grupKode }, { limit: 1 })
         : { items: [] };
-      const nextRole = targetGroupRes?.items?.[0]?.is_admin ? 'admin' : 'user';
+      const roleLevel = targetGroupRes?.items?.[0]?.role_level ?? 1;
+      const nextRole = roleLevel >= 2 ? 'admin' : 'user';
 
       await base44.asServiceRole.entities.AkunAkses.update(id, { grup_kode: grupKode, role: nextRole });
 

@@ -59,6 +59,7 @@ import PengaturanWebsite from '@/pages/admin/PengaturanWebsite';
 import RealisasiPembangunanAdmin from '@/pages/admin/RealisasiPembangunanAdmin';
 import AspirasiAdmin from '@/pages/admin/AspirasiAdmin';
 import KontakDaruratAdmin from '@/pages/admin/KontakDaruratAdmin';
+import ManajemenModulAdmin from '@/pages/admin/ManajemenModulAdmin';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
@@ -130,6 +131,7 @@ const AuthenticatedApp = () => {
           <Route path="/admin/realisasi" element={<RealisasiPembangunanAdmin />} />
           <Route path="/admin/aspirasi" element={<AspirasiAdmin />} />
           <Route path="/admin/kontak-darurat" element={<KontakDaruratAdmin />} />
+          <Route path="/admin/manajemen-modul" element={<ManajemenModulAdmin />} />
         </Route>
       </Route>
 

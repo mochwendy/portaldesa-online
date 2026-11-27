@@ -39,6 +39,12 @@
         "type": "number",
         "title": "Urutan Tampil",
         "default": 0
+      },
+      "role_level": {
+        "type": "number",
+        "title": "Tingkat Hierarki",
+        "description": "3=Super Admin, 2=Admin Desa, 1=Operator, 0=Warga",
+        "default": 1
       }
     },
     "required": [

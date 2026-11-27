@@ -1,21 +1,20 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, Loader2, Eye, EyeOff, Mail, Lock, Key } from 'lucide-react';
+import { AlertCircle, Loader2, Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import AuthLayout from '@/components/AuthLayout';
 import GoogleIcon from '@/components/GoogleIcon';
 import { safeReturnTo } from '@/lib/authReturnTo';
 import { signInWithProvider } from '@/lib/authMfaFlow';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useAuth } from '@/lib/AuthContext';
-
-const DEFAULT_PASSWORD = 'tagogapu123';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { Navigate } from 'react-router-dom';
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, isAuthenticated, user, isLoadingAuth, logout } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -28,15 +27,27 @@ export default function Login() {
   const navigate = useNavigate();
   const returnTo = searchParams.get('returnTo') || safeReturnTo() || '/admin';
 
+  // Clear any stale session on login page load to prevent auto-redirect
+  useEffect(() => {
+    sessionStorage.clear();
+  }, []);
+
+  // Redirect already authenticated users to /admin
+  useEffect(() => {
+    if (!isLoadingAuth && isAuthenticated && user) {
+      navigate('/admin', { replace: true });
+    }
+  }, [isAuthenticated, user, isLoadingAuth, navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      await login(email, password);
-      // Ensure we navigate after success
-      navigate(returnTo);
+      const result = await login(email, password);
+      // Always redirect to /admin after successful login
+      navigate('/admin', { replace: true });
     } catch (err) {
       setError(err.message || 'Gagal masuk. Periksa koneksi jaringan.');
     } finally {
@@ -54,7 +65,7 @@ export default function Login() {
         return;
       }
       if (result?.access_token) base44.auth.setToken(result.access_token);
-      navigate(returnTo);
+      navigate('/admin', { replace: true });
     } catch (err) {
       setError(err.message || 'Kode verifikasi tidak sesuai');
     } finally {
@@ -177,11 +188,6 @@ export default function Login() {
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
           </div>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <Key className="w-3 h-3" />
-            Default password: <code className="bg-muted px-1.5 py-0.5 rounded text-primary font-mono text-xs">{DEFAULT_PASSWORD}</code>
-            (untuk akun tanpa kata sandi tersimpan)
-          </p>
         </div>
 
         <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>

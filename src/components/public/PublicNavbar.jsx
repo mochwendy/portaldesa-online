@@ -4,6 +4,7 @@ import { Menu, X, Building2, Lock } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Image } from '@/components/ui/image';
 import useWebsiteSettings from '@/hooks/useWebsiteSettings';
+import { useAuth } from '@/lib/AuthContext';
 
 const FALLBACK_ITEMS = [
   { to: '/', label: 'Beranda', end: true },
@@ -21,6 +22,7 @@ export default function PublicNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [navItems, setNavItems] = useState(FALLBACK_ITEMS);
   const { settings } = useWebsiteSettings();
+  const { isAuthenticated, isLoadingAuth } = useAuth();
 
   useEffect(() => {
     base44.entities.MenuPortal.filter(
@@ -39,6 +41,9 @@ export default function PublicNavbar() {
       })
       .catch(() => {});
   }, []);
+
+  const adminLink = isAuthenticated ? '/admin' : '/login?redirect=/admin';
+  const adminLabel = isAuthenticated ? 'Admin' : 'Admin / Masuk';
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 text-slate-800 shadow-sm">
@@ -87,17 +92,10 @@ export default function PublicNavbar() {
               )
             )}
             <Link
-              to="/admin"
-              onClick={(e) => {
-                const isAuthenticated = localStorage.getItem('simdesta_auth_token');
-                if (!isAuthenticated) {
-                  e.preventDefault();
-                  window.location.href = '/login?redirect=/admin';
-                }
-              }}
+              to={adminLink}
               className="ml-2 flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium text-teal-700 border border-teal-300 bg-teal-50 hover:bg-teal-100 transition-colors"
             >
-              <Lock className="w-3.5 h-3.5" /> Admin / Masuk
+              <Lock className="w-3.5 h-3.5" /> {adminLabel}
             </Link>
           </nav>
 
@@ -113,7 +111,7 @@ export default function PublicNavbar() {
       {/* Mobile Dropdown Menu */}
       {mobileOpen && (
         <div className="lg:hidden absolute top-16 inset-x-0 bg-white border-b border-slate-200 shadow-xl px-4 py-4 flex flex-col gap-2 max-h-[80vh] overflow-y-auto">
-          {navItems.map((item) => (
+          {navItems.map((item) =>
             item.is_external ? (
               <a
                 key={item.to}
@@ -141,20 +139,13 @@ export default function PublicNavbar() {
                 {item.label}
               </NavLink>
             )
-          ))}
+          )}
           <Link
-            to="/admin"
-            onClick={(e) => {
-              setMobileOpen(false);
-              const isAuthenticated = localStorage.getItem('simdesta_auth_token');
-              if (!isAuthenticated) {
-                e.preventDefault();
-                window.location.href = '/login?redirect=/admin';
-              }
-            }}
+            to={adminLink}
+            onClick={() => setMobileOpen(false)}
             className="mt-2 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-teal-700 border border-teal-300 bg-teal-50 hover:bg-teal-100 transition-colors"
           >
-            <Lock className="w-4 h-4" /> Admin / Masuk
+            <Lock className="w-4 h-4" /> {adminLabel}
           </Link>
         </div>
       )}
