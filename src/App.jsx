@@ -32,7 +32,7 @@ import ProfilDesaPublik from '@/pages/public/ProfilDesaPublik';
 import PerangkatDesaPublik from '@/pages/public/PerangkatDesaPublik';
 import TransparansiAPBDesPublik from '@/pages/public/TransparansiAPBDesPublik';
 import LayananSuratPublik from '@/pages/public/LayananSuratPublik';
-import MarketplaceUMKM from '@/pages/public/MarketplaceUMKM';
+import MarketplaceUMKM from '@/pages/public/MarketplaceUmkm';
 import RencanaPembangunanPublik from '@/pages/public/RencanaPembangunanPublik';
 import RealisasiPembangunanPublik from '@/pages/public/RealisasiPembangunanPublik';
 import DaftarUMKM from '@/pages/public/DaftarUMKM';
