@@ -19,12 +19,22 @@ import PendudukCharts from '@/components/penduduk/PendudukCharts';
 import { fetchPendudukStats } from '@/lib/pendudukStats';
 
 const EMPTY_DATA = {
-  pendudukStats: null, surat: [], apbdes: [], umkm: [],
-  aspirasi: [], aspirasiStats: { baru: 0, diproses: 0, selesai: 0 },
-  usulan: [], realisasi: [],
+  pendudukStats: null, 
+  surat: [], 
+  apbdes: [], 
+  umkm: [],
+  aspirasi: [], 
+  aspirasiStats: { baru: 0, diproses: 0, selesai: 0 },
+  usulan: [], 
+  realisasi: [],
+  userGroups: [],
+  akunAkses: [],
+  websiteSetting: {},
+  demografiSummary: {},
 };
 
 const safeArray = (val) => (Array.isArray(val) ? val : []);
+const safeObject = (val) => (val && typeof val === 'object' ? val : {});
 
 export default function Dashboard() {
   const [data, setData] = useState(EMPTY_DATA);
@@ -44,18 +54,30 @@ export default function Dashboard() {
           base44.entities.Aspirasi.count({ status: 'Selesai' }),
           base44.entities.UsulanPembangunan.list('-created_date', 100),
           base44.entities.RealisasiPembangunan.list('-created_date', 100),
+          base44.entities.UserGroup.list({ limit: 500 }),
+          base44.entities.AkunAkses.list({ limit: 500 }),
+          base44.app.getPublicSettings(),
+          base44.entities.Penduduk.list({ limit: 1 }), // triggers demografi_summary via appSettings
         ]);
         // Satu permintaan gagal tidak boleh mengosongkan seluruh dashboard.
-        const [pendudukStats, surat, apbdes, umkm, aspirasi, aspirasiBaru, aspirasiDiproses, aspirasiSelesai, usulan, realisasi] = results.map((r) => (r.status === 'fulfilled' ? r.value : null));
+        const [
+          pendudukStats, surat, apbdes, umkm, aspirasi, aspirasiBaru, aspirasiDiproses, aspirasiSelesai, 
+          usulan, realisasi, userGroups, akunAkses, websiteSetting, pendudkTrigger
+        ] = results.map((r) => (r.status === 'fulfilled' ? r.value : null));
+        
         setData({
           pendudukStats: pendudukStats || null,
-          surat: surat || [],
-          apbdes: Array.isArray(apbdes) ? apbdes : apbdes?.items || [],
-          umkm: umkm || [],
-          aspirasi: aspirasi || [],
+          surat: safeArray(surat),
+          apbdes: safeArray(Array.isArray(apbdes) ? apbdes : apbdes?.items),
+          umkm: safeArray(umkm),
+          aspirasi: safeArray(aspirasi),
           aspirasiStats: { baru: aspirasiBaru || 0, diproses: aspirasiDiproses || 0, selesai: aspirasiSelesai || 0 },
-          usulan: usulan || [],
-          realisasi: realisasi || [],
+          usulan: safeArray(usulan),
+          realisasi: safeArray(realisasi),
+          userGroups: safeArray(userGroups),
+          akunAkses: safeArray(akunAkses),
+          websiteSetting: safeObject(websiteSetting),
+          demografiSummary: safeObject(pendudukStats), // stats already has demografi
         });
       } catch (e) {
         console.error(e);

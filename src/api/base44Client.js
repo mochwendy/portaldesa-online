@@ -1,5 +1,7 @@
 import { appParams } from '@/lib/app-params';
 import { loadLocalData } from '@/lib/localData';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient.js';
+import { createSupabaseEntity, supabaseKelolaAkunAkses, getPortalNotifications } from './supabaseAdapter.js';
 
 export const IS_LOCALHOST = !import.meta.env.VITE_BASE44_APP_BASE_URL;
 
@@ -350,9 +352,56 @@ const entityNames = [
   'KontakDarurat',
 ];
 
-entityNames.forEach((name) => {
-  entities[name] = createEntityAPI(name);
-});
+const useSupabase = isSupabaseConfigured();
+if (useSupabase) {
+  entityNames.forEach((name) => {
+    entities[name] = createSupabaseEntity(name);
+  });
+} else {
+  entityNames.forEach((name) => {
+    entities[name] = createEntityAPI(name);
+  });
+}
+
+async function fetchPortalNotifications() {
+  try {
+    // Get SuratKeterangan with status 'Baru' or 'Menunggu'
+    const suratRows = await loadEntityData('SuratKeterangan');
+    const suratNotifications = (suratRows || [])
+      .filter(r => ['Baru', 'Menunggu'].includes(r.status))
+      .map(r => ({
+        id: r.id,
+        type: 'surat',
+        title: `Surat ${r.jenis_surat || 'Keterangan'} - ${r.nama_lengkap || r.nama || 'Warga'}`,
+        message: `Status: ${r.status}`,
+        created_at: r.created_date || r.created_at,
+        reference_id: r.id,
+      }));
+
+    // Get Aspirasi with status 'Baru' or 'Menunggu'
+    const aspirasiRows = await loadEntityData('Aspirasi');
+    const aspirasiNotifications = (aspirasiRows || [])
+      .filter(r => ['Baru', 'Menunggu'].includes(r.status))
+      .map(r => ({
+        id: r.id,
+        type: 'aspirasi',
+        title: `Aspirasi: ${r.judul || r.kategori || 'Tanpa Judul'}`,
+        message: `Dari: ${r.nama_lengkap || r.nama || 'Anonim'} (${r.status})`,
+        created_at: r.created_at,
+        reference_id: r.id,
+      }));
+
+    // Combine and sort by created_at descending
+    const allNotifications = [...suratNotifications, ...aspirasiNotifications]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 50);
+
+    return allNotifications;
+  } catch (e) {
+    console.error('fetchPortalNotifications error:', e);
+    return [];
+  }
+}
 
 const functions = {
   async invoke(funcName, params = {}) {
@@ -364,7 +413,15 @@ const functions = {
         return { data: await fetchAspirasiStats() };
       case 'getSuratStats':
         return { data: await fetchSuratStats() };
+      case 'getPortalNotifications':
+        if (isSupabaseConfigured()) {
+          return { data: await getPortalNotifications() };
+        }
+        return { data: await fetchPortalNotifications() };
       case 'kelolaAkunAkses':
+        if (isSupabaseConfigured()) {
+          return { data: await supabaseKelolaAkunAkses(params) };
+        }
         return await invokeKelolaAkunAkses(params);
       default:
         console.warn('[base44] unknown function:', funcName);

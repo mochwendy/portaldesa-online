@@ -1,7 +1,8 @@
 import ErrorBoundary from '@/lib/ErrorBoundary';
 import { Toaster } from "@/components/ui/toaster"
-import { QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider, useQueryClient } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
+import { SupabaseRealtimeSync } from '@/hooks/useSupabaseRealtime'
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
@@ -147,6 +148,7 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <ScrollToTop />
+          <SupabaseRealtimeSync />
           <AuthenticatedApp />
         </Router>
         <Toaster />

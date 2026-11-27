@@ -11,6 +11,15 @@ import useAccessPermissions from '@/hooks/useAccessPermissions';
 import AkunBelumTerdaftar from '@/components/admin/AkunBelumTerdaftar';
 import PortalNotifications from '@/components/admin/PortalNotifications';
 
+const LoadingScreen = () => (
+  <div className="fixed inset-0 flex items-center justify-center bg-slate-50 z-50">
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+      <p className="text-sm text-slate-500">Memuat sesi...</p>
+    </div>
+  </div>
+);
+
 const ALL_MODULES = {
   dashboard: 'Dashboard',
   penduduk: 'Data Penduduk',
@@ -62,7 +71,12 @@ export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { isLoadingAuth } = useAuth();
   const { canAccess, group, user, loading, terdaftar, alasan, logout } = useAccessPermissions();
+
+  if (isLoadingAuth) {
+    return <LoadingScreen />;
+  }
 
   // 4-tier role hierarchy: super_admin (3) > admin_desa (2) > operator (1) > warga (0)
   // Super admin: full access without filter

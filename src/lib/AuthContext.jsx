@@ -98,7 +98,7 @@ export const AuthProvider = ({ children }) => {
       // This ensures we use the SAME data source as UserAccounts.jsx and login()
       const akunList = await base44.entities.AkunAkses.list({ sort: 'nama', limit: 500 });
       const akunRows = Array.isArray(akunList) ? akunList : (akunList?.items || []);
-      setCsvAccounts(akunRows);
+      setCsvAccounts(Array.isArray(akunRows) ? akunRows : []);
 
       // Check for custom auth token in localStorage
       const customToken = localStorage.getItem('simdesta_auth_token');
@@ -143,7 +143,7 @@ export const AuthProvider = ({ children }) => {
               try {
                 const groupList = await base44.entities.UserGroup.list({ limit: 500 });
                 const groups = Array.isArray(groupList) ? groupList : (groupList?.items || []);
-                const userGroup = groups.find(g => g.kode === parsedUser.grup_kode);
+                const userGroup = (Array.isArray(groups) ? groups : []).find(g => g.kode === parsedUser.grup_kode);
                 if (userGroup) {
                   parsedUser.grup_nama = userGroup.nama || parsedUser.grup_kode;
                 }
@@ -163,9 +163,10 @@ export const AuthProvider = ({ children }) => {
 
       try {
         const publicSettings = await base44.app.getPublicSettings();
-        setAppPublicSettings(publicSettings);
+        setAppPublicSettings(publicSettings || {});
       } catch (appError) {
         console.warn('Failed to load public settings:', appError);
+        setAppPublicSettings({});
       }
 
       if (!customToken) {
@@ -279,7 +280,7 @@ export const AuthProvider = ({ children }) => {
       const akunList = await base44.entities.AkunAkses.list({ sort: 'nama', limit: 500 });
       const akunRows = Array.isArray(akunList) ? akunList : (akunList?.items || []);
 
-      const matched = akunRows.find((a) => 
+      const matched = (Array.isArray(akunRows) ? akunRows : []).find((a) => 
         (a.email || '').toLowerCase() === input || 
         (a.username || '').toLowerCase() === input
       );
@@ -320,7 +321,7 @@ export const AuthProvider = ({ children }) => {
         try {
           const groupList = await base44.entities.UserGroup.list({ limit: 500 });
           const groups = Array.isArray(groupList) ? groupList : (groupList?.items || []);
-          const userGroup = groups.find(g => g.kode === matched.grup_kode);
+          const userGroup = (Array.isArray(groups) ? groups : []).find(g => g.kode === matched.grup_kode);
           if (userGroup) {
             // Derive role_level from group kode since CSV lacks role_level column
             role_level = getRoleLevel(userGroup.kode);
