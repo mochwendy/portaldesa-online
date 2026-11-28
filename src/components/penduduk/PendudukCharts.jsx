@@ -13,13 +13,17 @@ const PIE_COLORS = [
 const tooltipStyle = { borderRadius: 12, border: '1px solid hsl(var(--border))', fontSize: 12 };
 
 function PieBlock({ data, height = 220 }) {
+  const total = data.reduce((sum, d) => sum + (d.value || 0), 0);
   return (
     <ResponsiveContainer width="100%" height={height}>
       <PieChart>
         <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={48} outerRadius={78} paddingAngle={2}>
           {data.map((entry, i) => <Cell key={entry.name} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
         </Pie>
-        <Tooltip contentStyle={tooltipStyle} />
+        <Tooltip 
+          contentStyle={tooltipStyle} 
+          formatter={(value, name) => [`${value} jiwa (${total > 0 ? ((value / total) * 100).toFixed(1) : 0}%)`, name]}
+        />
         <Legend wrapperStyle={{ fontSize: 12 }} />
       </PieChart>
     </ResponsiveContainer>
@@ -27,27 +31,44 @@ function PieBlock({ data, height = 220 }) {
 }
 
 function VerticalBars({ data, color = 'hsl(var(--chart-1))', height = 220 }) {
+  const total = data.reduce((sum, d) => sum + (d.value || 0), 0);
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="name" fontSize={10} interval={0} tickLine={false} angle={-20} textAnchor="end" height={45} />
+        <XAxis 
+          dataKey="name" 
+          fontSize={10} 
+          interval={0} 
+          tickLine={false} 
+          angle={-35} 
+          textAnchor="end" 
+          height={55}
+          tick={{ fontSize: 9 }}
+        />
         <YAxis fontSize={11} tickLine={false} axisLine={false} width={38} />
-        <Tooltip contentStyle={tooltipStyle} />
-        <Bar dataKey="value" fill={color} radius={[6, 6, 0, 0]} />
+        <Tooltip 
+          contentStyle={tooltipStyle} 
+          formatter={(value, name) => [`${value} jiwa (${total > 0 ? ((value / total) * 100).toFixed(1) : 0}%)`, name]}
+        />
+        <Bar dataKey="value" fill={color} radius={[6, 6, 0, 0]} maxBarSize={40} />
       </BarChart>
     </ResponsiveContainer>
   );
 }
 
 function HorizontalBars({ data, color = 'hsl(var(--chart-2))', height = 260 }) {
+  const total = data.reduce((sum, d) => sum + (d.value || 0), 0);
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" horizontal={false} />
         <XAxis type="number" fontSize={11} tickLine={false} axisLine={false} />
-        <YAxis type="category" dataKey="name" fontSize={10} width={160} tickLine={false} axisLine={false} angle={-20} />
-        <Tooltip contentStyle={tooltipStyle} />
+        <YAxis type="category" dataKey="name" fontSize={10} width={160} tickLine={false} axisLine={false} />
+        <Tooltip 
+          contentStyle={tooltipStyle} 
+          formatter={(value, name) => [`${value} jiwa (${total > 0 ? ((value / total) * 100).toFixed(1) : 0}%)`, name]}
+        />
         <Bar dataKey="value" fill={color} radius={[0, 6, 6, 0]} />
       </BarChart>
     </ResponsiveContainer>
@@ -62,13 +83,24 @@ function RwBars({ data, height = 260 }) {
       </div>
     );
   }
+  const total = data.reduce((sum, d) => sum + (d.value || 0), 0);
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 18, right: 8, left: -16, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="name" fontSize={10} interval={0} tickLine={false} axisLine={false} />
+        <XAxis 
+          dataKey="name" 
+          fontSize={10} 
+          interval={0} 
+          tickLine={false} 
+          axisLine={false} 
+          tick={{ fontSize: 9 }}
+        />
         <YAxis fontSize={10} tickLine={false} axisLine={false} width={36} />
-        <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${value} jiwa`, 'Jumlah']} />
+        <Tooltip 
+          contentStyle={tooltipStyle} 
+          formatter={(value, name) => [`${value} jiwa (${total > 0 ? ((value / total) * 100).toFixed(1) : 0}%)`, name]}
+        />
         <Bar dataKey="value" fill="hsl(var(--chart-1))" radius={[6, 6, 0, 0]} maxBarSize={48}>
           <LabelList dataKey="value" position="top" fontSize={10} fill="hsl(var(--muted-foreground))" />
         </Bar>

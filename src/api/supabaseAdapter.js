@@ -116,60 +116,176 @@ function applySortAndLimit(queryBuilder, sort, limit) {
 }
 
 // Apply JSONB-aware filters for filter() and count()
-// Handles both plain values (eq) and operator objects ($ilike, $contains, $gt, $lt, $gte, $lte, $neq, $in)
-// $or with $regex is handled BEFORE calling this function (in filter()/count())
+// Handles both plain values (eq) and operator objects ($ilike, $contains, $gt, $lt, $gte, $lte, $neq, $in, $not, $regex)
+// $or is handled HERE to support audit filters with complex conditions
 function applyJsonbFilter(queryBuilder, queryObj) {
     if (!queryObj || typeof queryObj !== 'object') return queryBuilder;
-    const skipKeys = ['search', '$or', 'id', 'created_at', 'updated_at'];
+    const skipKeys = ['search', 'id', 'created_at', 'updated_at'];
+    
+    // Build a list of filters to apply
+    const filters = [];
+    const orGroups = [];
+    
     Object.entries(queryObj).forEach(([key, value]) => {
         if (skipKeys.includes(key)) return;
         
+        // Handle $or array: each element is a condition object
+        if (key === '$or' && Array.isArray(value)) {
+            const orConditions = value.map(cond => {
+                if (!cond || typeof cond !== 'object') return null;
+                const entries = Object.entries(cond);
+                if (entries.length === 0) return null;
+                const [field, fieldValue] = entries[0];
+                const jsonbKey = `data->>${field}`;
+                
+                // Handle different operators in the condition
+                if (fieldValue !== null && typeof fieldValue === 'object' && !Array.isArray(fieldValue)) {
+                    const ops = Object.entries(fieldValue);
+                    if (ops.length === 1) {
+                        const [op, opValue] = ops[0];
+                        switch (op) {
+                            case '$regex':
+                                // $regex '^$' means empty string
+                                if (opValue === '^$') {
+                                    // Empty string OR null
+                                    return `(${jsonbKey}.eq.,${jsonbKey}.is.null)`;
+                                }
+                                if (opValue === '^-$') {
+                                    // dash OR en-dash
+                                    return `(${jsonbKey}.eq.-,${jsonbKey}.eq.–)`;
+                                }
+                                if (opValue === '^–$') {
+                                    return `(${jsonbKey}.eq.–,${jsonbKey}.eq.-)`;
+                                }
+                                // For other regex, use ilike (approximate)
+                                return `${jsonbKey}.ilike.%${String(opValue).replace('%', '%25').replace('_', '%5F')}%`;
+                            case '$ilike':
+                                return `${jsonbKey}.ilike.${encodeURIComponent(String(opValue))}`;
+                            case '$neq':
+                                return `${jsonbKey}.neq.${encodeURIComponent(String(opValue))}`;
+                            case '$not':
+                                // Handle $not with nested operator (e.g., { $not: { $regex: '^$' } })
+                                if (opValue && typeof opValue === 'object') {
+                                    const notOps = Object.entries(opValue);
+                                    if (notOps.length === 1) {
+                                        const [notOp, notValue] = notOps[0];
+                                        if (notOp === '$regex') {
+                                            // $not { $regex: '^$' } means NOT empty string AND NOT null
+                                            if (notValue === '^$') {
+                                                return `${jsonbKey}.neq.,${jsonbKey}.is.null.false`;
+                                            }
+                                            if (notValue === '^-$') {
+                                                return `${jsonbKey}.neq.-,${jsonbKey}.neq.–`;
+                                            }
+                                            if (notValue === '^–$') {
+                                                return `${jsonbKey}.neq.–,${jsonbKey}.neq.-`;
+                                            }
+                                            // For other regex not match, use NOT ILIKE
+                                            return `${jsonbKey}.not.ilike.%${String(notValue).replace('%', '%25').replace('_', '%5F')}%`;
+                                        }
+                                    }
+                                }
+                                break;
+                            case '$eq':
+                                return `${jsonbKey}.eq.${encodeURIComponent(String(opValue))}`;
+                            default:
+                                return `${jsonbKey}.eq.${encodeURIComponent(String(opValue))}`;
+                        }
+                    }
+                } else {
+                    // Plain value equality
+                    return `${jsonbKey}.eq.${encodeURIComponent(String(fieldValue))}`;
+                }
+                return null;
+            }).filter(Boolean);
+            
+            if (orConditions.length > 0) {
+                orGroups.push(orConditions.join(','));
+            }
+            return;
+        }
+        
         const jsonbKey = `data->>${key}`;
         if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-            // Operator object: { $ilike: '%abc%' }, { $gt: 100 }, { $in: [1,2,3] }, etc.
+            // Operator object: { $ilike: '%abc%' }, { $gt: 100 }, { $in: [1,2,3] }, { $not: {...} }, etc.
             // Also handle $regex (legacy) by converting to $ilike
             Object.entries(value).forEach(([op, opValue]) => {
                 switch (op) {
                     case '$ilike':
-                        queryBuilder = queryBuilder.ilike(jsonbKey, String(opValue));
+                        filters.push(`${jsonbKey}.ilike.${encodeURIComponent(String(opValue))}`);
                         break;
                     case '$like':
-                        queryBuilder = queryBuilder.like(jsonbKey, String(opValue));
+                        filters.push(`${jsonbKey}.like.${encodeURIComponent(String(opValue))}`);
                         break;
                     case '$regex': // Legacy support: convert to $ilike
-                        queryBuilder = queryBuilder.ilike(jsonbKey, `%${String(opValue)}%`);
+                        filters.push(`${jsonbKey}.ilike.%${encodeURIComponent(String(opValue))}%`);
                         break;
                     case '$contains':
-                        queryBuilder = queryBuilder.contains(jsonbKey, opValue);
+                        filters.push(`${jsonbKey}.cs.${encodeURIComponent(JSON.stringify(opValue))}`);
                         break;
                     case '$gt':
-                        queryBuilder = queryBuilder.gt(jsonbKey, opValue);
+                        filters.push(`${jsonbKey}.gt.${encodeURIComponent(String(opValue))}`);
                         break;
                     case '$gte':
-                        queryBuilder = queryBuilder.gte(jsonbKey, opValue);
+                        filters.push(`${jsonbKey}.gte.${encodeURIComponent(String(opValue))}`);
                         break;
                     case '$lt':
-                        queryBuilder = queryBuilder.lt(jsonbKey, opValue);
+                        filters.push(`${jsonbKey}.lt.${encodeURIComponent(String(opValue))}`);
                         break;
                     case '$lte':
-                        queryBuilder = queryBuilder.lte(jsonbKey, opValue);
+                        filters.push(`${jsonbKey}.lte.${encodeURIComponent(String(opValue))}`);
                         break;
                     case '$neq':
-                        queryBuilder = queryBuilder.neq(jsonbKey, opValue);
+                        filters.push(`${jsonbKey}.neq.${encodeURIComponent(String(opValue))}`);
                         break;
                     case '$in':
-                        queryBuilder = queryBuilder.in(jsonbKey, opValue);
+                        if (Array.isArray(opValue)) {
+                            filters.push(`${jsonbKey}.in.(${opValue.map(v => encodeURIComponent(String(v))).join(',')})`);
+                        }
+                        break;
+                    case '$not':
+                        // Handle $not with nested operator (e.g., { $not: { $regex: '^\\d{16}$' } })
+                        if (opValue && typeof opValue === 'object') {
+                            const notOps = Object.entries(opValue);
+                            if (notOps.length === 1) {
+                                const [notOp, notValue] = notOps[0];
+                                if (notOp === '$regex') {
+                                    // For NIK not matching 16 digits: use filter with not.ilike pattern
+                                    // 16 underscores for 16 digits pattern
+                                    filters.push(`${jsonbKey}.not.ilike.${'________________'}`);
+                                }
+                            }
+                        }
                         break;
                     default:
                         // Unknown operator, fallback to eq
-                        queryBuilder = queryBuilder.eq(jsonbKey, String(opValue));
+                        filters.push(`${jsonbKey}.eq.${encodeURIComponent(String(opValue))}`);
                 }
             });
         } else {
             // Plain value: use eq with data->>key
-            queryBuilder = queryBuilder.eq(jsonbKey, String(value));
+            filters.push(`${jsonbKey}.eq.${encodeURIComponent(String(value))}`);
         }
     });
+    
+    // Apply all simple filters (AND)
+    if (filters.length > 0) {
+        filters.forEach(f => {
+            const parts = f.split('.');
+            const column = parts[0];
+            const operator = parts[1];
+            const value = parts.slice(2).join('.');
+            queryBuilder = queryBuilder.filter(column, operator, value);
+        });
+    }
+    
+    // Apply OR groups
+    if (orGroups.length > 0) {
+        orGroups.forEach(og => {
+            queryBuilder = queryBuilder.or(og);
+        });
+    }
+    
     return queryBuilder;
 }
 
@@ -563,6 +679,91 @@ export async function getPortalNotifications() {
 }
 
 // Implementasi submitAspirasi untuk Supabase
+// RPC function calls for Penduduk audit filters
+export async function fetchPendudukAudit(p_audit_type, p_search, p_status_kependudukan, p_rw, p_limit, p_offset) {
+    assertSupabase();
+    // Ensure p_limit and p_offset are proper Numbers (not undefined/0 causing type mismatch)
+    const limitVal = p_limit != null ? Number(p_limit) : 10000;
+    const offsetVal = p_offset != null ? Number(p_offset) : 0;
+    
+    const { data, error } = await supabase.rpc('filter_penduduk_audit', {
+        p_audit_type,
+        p_search,
+        p_status_kependudukan,
+        p_rw,
+        p_limit: limitVal,
+        p_offset: offsetVal,
+    });
+    if (error) {
+        console.error('[fetchPendudukAudit] RPC error:', { code: error?.code, message: error?.message, details: error?.details, hint: error?.hint });
+        throw error;
+    }
+    // Transform from Supabase format ({id, data: JSONB, created_at, updated_at}) to flat CSV format
+    const numericFields = ['listrik', 'rt', 'rw', 'anggaran', 'realisasi', 'tahun_anggaran', 'persentase_progress', 'estimasi_anggaran', 'urutan', 'jumlah_penduduk'];
+    const transformed = transformRows(data || [], numericFields);
+    return transformed;
+}
+
+export async function countPendudukAudit(p_audit_type, p_search, p_status_kependudukan, p_rw) {
+    assertSupabase();
+    
+    const { data, error } = await supabase.rpc('count_penduduk_audit', {
+        p_audit_type,
+        p_search,
+        p_status_kependudukan,
+        p_rw,
+    });
+    if (error) {
+        console.error('[countPendudukAudit] RPC error:', { code: error?.code, message: error?.message, details: error?.details, hint: error?.hint });
+        throw error;
+    }
+    return data || 0;
+}
+
+// Fetch all KK members by no_kk (no pagination, full data)
+export async function fetchPendudukByNoKk(noKk) {
+    assertSupabase();
+    if (!noKk || noKk === '-') return [];
+    
+    const cleanedNoKk = String(noKk).trim();
+    
+    // Use BTRIM and exact match to handle whitespace issues
+    const { data, error } = await supabase
+        .from('Penduduk')
+        .select('*')
+        .filter('data->>no_kk', 'eq', cleanedNoKk)
+        .order('data->>status_keluarga', { ascending: true })
+        .limit(100);
+    
+    if (error) {
+        console.error('[fetchPendudukByNoKk] Supabase error:', { code: error?.code, message: error?.message, details: error?.details, hint: error?.hint });
+        throw error;
+    }
+    
+    // Transform from Supabase format to flat CSV format
+    const numericFields = ['listrik', 'rt', 'rw', 'anggaran', 'realisasi', 'tahun_anggaran', 'persentase_progress', 'estimasi_anggaran', 'urutan', 'jumlah_penduduk'];
+    const transformed = transformRows(data || [], numericFields);
+    
+    // Sort by family hierarchy
+    const KELUARGA_ORDER = [
+        'Kepala Keluarga',
+        'Istri',
+        'Anak',
+        'Menantu',
+        'Cucu',
+        'Orang Tua',
+        'Mertua',
+        'Famili Lain',
+        'Lainnya'
+    ];
+    
+    return [...transformed].sort((a, b) => {
+        const idxA = KELUARGA_ORDER.indexOf(a.status_keluarga || 'Lainnya');
+        const idxB = KELUARGA_ORDER.indexOf(b.status_keluarga || 'Lainnya');
+        return idxA - idxB;
+    });
+}
+
 export async function supabaseSubmitAspirasi(params) {
     assertSupabase();
     

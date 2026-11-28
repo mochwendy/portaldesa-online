@@ -10,8 +10,10 @@ import PendudukStatsGrid from '@/components/penduduk/PendudukStatsGrid';
 import PendudukFormDialog from '@/components/penduduk/PendudukFormDialog';
 import PendudukImportDialog from '@/components/penduduk/PendudukImportDialog';
 import PendudukDetailDialog from '@/components/penduduk/PendudukDetailDialog';
+import KkDetailDrawer from '@/components/penduduk/KkDetailDrawer';
 import { fetchPendudukStats, fetchAllPenduduk, fetchFilteredPenduduk, fetchRwOptions } from '@/lib/pendudukStats';
 import { downloadPendudukExcel } from '@/lib/pendudukExcel';
+import { fetchPendudukAudit, countPendudukAudit } from '@/api/supabaseAdapter';
 
 const PAGE_SIZE = 25;
 
@@ -27,12 +29,15 @@ export default function Penduduk() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterRw, setFilterRw] = useState('all');
+  const [filterAudit, setFilterAudit] = useState('all');
   const [rwOptions, setRwOptions] = useState([]);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [detail, setDetail] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [kkDetailOpen, setKkDetailOpen] = useState(false);
+  const [selectedKk, setSelectedKk] = useState(null);
 
   const cursor = cursorStack[cursorStack.length - 1];
   // Penanda permintaan terakhir: hasil pencarian lama tidak boleh menimpa data terbaru.
@@ -42,6 +47,10 @@ export default function Penduduk() {
     const query = {};
     if (filterStatus !== 'all') query.status_kependudukan = filterStatus;
     if (filterRw !== 'all') query.rw = filterRw;
+    
+    // Audit filters are now handled by RPC functions, so we don't include them here
+    // This function is only used when filterAudit === 'all'
+    
     const keyword = search.trim();
     if (keyword) {
       query.$or = [
@@ -64,28 +73,58 @@ export default function Penduduk() {
     requestRef.current = requestId;
     setLoading(true);
     try {
+      const keyword = search.trim();
+      const status = filterStatus !== 'all' ? filterStatus : null;
+      const rw = filterRw !== 'all' ? filterRw : null;
+      const audit = filterAudit !== 'all' ? filterAudit : null;
+      
+      // Use RPC for audit filters to avoid PostgREST 400 errors
+      if (audit) {
+        const offset = activeCursor ? Number(activeCursor) : 0;
+        let result, count;
+        [result, count] = await Promise.all([
+          fetchPendudukAudit(audit, keyword || null, status, rw, PAGE_SIZE, offset),
+          countPendudukAudit(audit, keyword || null, status, rw),
+        ]);
+        if (requestId !== requestRef.current) return;
+        setRows(result || []);
+        setPageInfo({ 
+          has_more: offset + (result?.length || 0) < count, 
+          next_cursor: offset + (result?.length || 0) < count ? offset + (result?.length || 0) : null 
+        });
+        setTotal(count);
+        return; // Prevent fallback to unfiltered data
+      }
+      
+      // No audit filter - use regular filter
       const query = buildQuery();
-      const [result, count] = await Promise.all([
-        base44.entities.Penduduk.filter(query, {
-          sort: 'nama_lengkap',
-          limit: PAGE_SIZE,
-          ...(activeCursor ? { cursor: activeCursor } : {}),
-        }),
-        base44.entities.Penduduk.count(query),
-      ]);
-      if (requestId !== requestRef.current) return;
-      setRows(result.items || []);
-      setPageInfo({ has_more: result.has_more, next_cursor: result.next_cursor });
-      setTotal(count);
+        const [result, count] = await Promise.all([
+          base44.entities.Penduduk.filter(query, {
+            sort: 'nama_lengkap',
+            limit: PAGE_SIZE,
+            ...(activeCursor ? { cursor: activeCursor } : {}),
+          }),
+          base44.entities.Penduduk.count(query),
+        ]);
+        if (requestId !== requestRef.current) return;
+        setRows(result.items || []);
+        setPageInfo({ has_more: result.has_more, next_cursor: result.next_cursor });
+        setTotal(count);
     } catch (e) {
-      if (requestId === requestRef.current) console.error(e);
+      // Jika audit filter gagal, tampilkan data kosong (tidak fallback ke seluruh warga)
+      if (requestId === requestRef.current) {
+        console.error('[loadPage] Filter audit error:', e);
+        setRows([]);
+        setPageInfo({ has_more: false, next_cursor: null });
+        setTotal(0);
+      }
     } finally {
       if (requestId === requestRef.current) setLoading(false);
     }
   };
 
   useEffect(() => { loadStats(); fetchRwOptions().then(setRwOptions).catch(() => {}); }, []);
-  useEffect(() => { loadPage(cursor); }, [cursor, search, filterStatus, filterRw]);
+  useEffect(() => { loadPage(cursor); }, [cursor, search, filterStatus, filterRw, filterAudit]);
 
   const resetPaging = () => setCursorStack([null]);
   const changeFilter = (setter) => (value) => { setter(value); resetPaging(); };
@@ -101,13 +140,38 @@ export default function Penduduk() {
   const exportAll = async () => {
     setExporting(true);
     try {
-      const query = buildQuery();
-      const records = await fetchFilteredPenduduk(query);
+      const keyword = search.trim();
+      const status = filterStatus !== 'all' ? filterStatus : null;
+      const rw = filterRw !== 'all' ? filterRw : null;
+      const audit = filterAudit !== 'all' ? filterAudit : null;
+      
+      let records = [];
+      
+      if (audit) {
+        // Use RPC for audit filters to export all matching records
+        records = await fetchPendudukAudit(audit, keyword || null, status, rw, 10000, 0);
+      } else {
+        // No audit filter - use regular filter
+        const query = buildQuery();
+        records = await fetchFilteredPenduduk(query);
+      }
+      
       if (records.length === 0) return;
       downloadPendudukExcel(records);
     } finally {
       setExporting(false);
     }
+  };
+
+  const openKkDetail = (noKk) => {
+    if (!noKk || noKk === '-') return;
+    setSelectedKk(noKk);
+    setKkDetailOpen(true);
+  };
+
+  const closeKkDetail = () => {
+    setKkDetailOpen(false);
+    setSelectedKk(null);
   };
 
   const usiaText = (r) => (r.kelompok_usia ? r.kelompok_usia.replace(' Tahun', '') : '-');
@@ -162,6 +226,18 @@ export default function Penduduk() {
               {['Aktif', 'Pindah', 'Meninggal', 'Perantau'].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={filterAudit} onValueChange={changeFilter(setFilterAudit)}>
+            <SelectTrigger className="w-full lg:w-48">
+              <SelectValue placeholder="Filter Audit Data" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Data</SelectItem>
+              <SelectItem value="kk_kosong">No. KK Kosong / Tidak Ada</SelectItem>
+              <SelectItem value="nik_invalid">NIK Bukan 16 Digit</SelectItem>
+              <SelectItem value="demografi_kurang">Data Demografi Belum Lengkap</SelectItem>
+              <SelectItem value="has_wa">Memiliki No. WA</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="overflow-x-auto">
@@ -186,7 +262,19 @@ export default function Penduduk() {
                 <tr key={r.id} className="border-t border-border hover:bg-muted/30">
                   <td className="px-4 py-3 font-mono text-xs">{r.nik}</td>
                   <td className="px-4 py-3 font-medium">{r.nama_lengkap}</td>
-                  <td className="px-4 py-3 hidden md:table-cell font-mono text-xs text-muted-foreground">{r.no_kk || '-'}</td>
+                  <td className="px-4 py-3 hidden md:table-cell font-mono text-xs">
+              {r.no_kk ? (
+                <button
+                  onClick={() => openKkDetail(r.no_kk)}
+                  className="text-primary hover:underline cursor-pointer"
+                  title="Lihat detail anggota keluarga"
+                >
+                  {r.no_kk}
+                </button>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              )}
+            </td>
                   <td className="px-4 py-3 hidden md:table-cell">{r.jenis_kelamin === 'Laki-laki' ? 'L' : r.jenis_kelamin === 'Perempuan' ? 'P' : '-'}</td>
                   <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{usiaText(r)}</td>
                   <td className="px-4 py-3 hidden lg:table-cell text-muted-foreground">{r.status_keluarga || '-'}</td>
@@ -248,6 +336,13 @@ export default function Penduduk() {
         onOpenChange={(v) => !v && setDetail(null)}
         penduduk={detail}
         onEdit={(p) => { setDetail(null); setEditing(p); setFormOpen(true); }}
+      />
+      <KkDetailDrawer
+        open={kkDetailOpen}
+        onOpenChange={closeKkDetail}
+        noKk={selectedKk}
+        onEdit={(p) => { closeKkDetail(); setEditing(p); setFormOpen(true); }}
+        onView={(p) => { closeKkDetail(); setDetail(p); }}
       />
     </div>
   );
