@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { createSupabaseEntity } from '@/api/supabaseAdapter';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -21,7 +21,8 @@ export default function PengaturanWebsite() {
   useEffect(() => {
     (async () => {
       try {
-        const list = await base44.entities.WebsiteSetting.list('-updated_date', 1);
+        const entity = createSupabaseEntity('WebsiteSetting');
+        const list = await entity.list('-updated_date', 1);
         if (list[0]) {
           setRecordId(list[0].id);
           setForm({ ...DEFAULT_SETTINGS, ...list[0] });
@@ -43,9 +44,10 @@ export default function PengaturanWebsite() {
       Object.keys(DEFAULT_SETTINGS).forEach((key) => {
         payload[key] = form[key] ?? '';
       });
+      const entity = createSupabaseEntity('WebsiteSetting');
       const saved = recordId
-        ? await base44.entities.WebsiteSetting.update(recordId, payload)
-        : await base44.entities.WebsiteSetting.create(payload);
+        ? await entity.update(recordId, payload)
+        : await entity.create(payload);
       const next = { ...DEFAULT_SETTINGS, ...saved };
       setRecordId(saved.id);
       setForm(next);

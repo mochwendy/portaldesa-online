@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
-import { FileDown, Loader2, ShieldAlert, FileText } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
+import { FileDown, Loader2, ShieldAlert, FileText, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { transformRow } from '@/api/supabaseAdapter';
 
 // Halaman publik: warga membuka tautan unduh surat dari WhatsApp,
 // lalu menerima tautan PDF yang baru ditandatangani (berlaku 1 jam).
@@ -20,15 +21,51 @@ export default function UnduhSurat() {
         return;
       }
       try {
-        const res = await base44.functions.invoke('getSuratPdfUrl', { kode });
-        if (res.data?.signed_url) {
-          setUrl(res.data.signed_url);
-          setSurat({ nomor: res.data.nomor_surat, jenis: res.data.jenis_surat });
-        } else {
-          setErr(res.data?.error || 'Berkas PDF surat belum tersedia.');
+        if (!isSupabaseConfigured()) {
+          setErr('Supabase tidak dikonfigurasi. Silakan hubungi administrator.');
+          setLoading(false);
+          return;
         }
+
+        // Fetch surat by kode_verifikasi
+        const { data, error: dbError } = await supabase
+          .from('SuratKeterangan')
+          .select('*')
+          .eq('data->>kode_verifikasi', kode)
+          .single();
+        
+        if (dbError || !data) {
+          setErr('Surat dengan kode verifikasi tersebut tidak ditemukan.');
+          setLoading(false);
+          return;
+        }
+        
+        const suratData = transformRow(data);
+        
+        // Check if PDF file URI exists
+        if (!suratData.pdf_file_uri) {
+          setErr('Berkas PDF surat belum tersedia. Silakan hubungi petugas desa.');
+          setLoading(false);
+          return;
+        }
+        
+        // Create signed URL for the PDF file
+        const { data: signedUrlData, error: signError } = await supabase.storage
+          .from('surat-pdf')
+          .createSignedUrl(suratData.pdf_file_uri, 3600); // 1 hour expiry
+        
+        if (signError || !signedUrlData?.signedUrl) {
+          console.error('Error creating signed URL:', signError);
+          setErr('Gagal menyiapkan tautan unduh. Silakan coba beberapa saat lagi.');
+          setLoading(false);
+          return;
+        }
+        
+        setUrl(signedUrlData.signedUrl);
+        setSurat({ nomor: suratData.nomor_surat, jenis: suratData.jenis_surat });
       } catch (e) {
-        setErr(e?.response?.data?.error || 'Gagal menyiapkan berkas surat.');
+        console.error('Error in UnduhSurat:', e);
+        setErr(e?.message || 'Gagal menyiapkan berkas surat.');
       } finally {
         setLoading(false);
       }

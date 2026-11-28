@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { createSupabaseEntity } from '@/api/supabaseAdapter';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,7 +31,14 @@ export default function AspirasiDetailDialog({ open, onOpenChange, aspirasi, onS
     setPetugas(aspirasi.petugas || '');
     setFinalStage(FINAL_STAGES.includes(aspirasi.status) ? aspirasi.status : 'none');
     if (!aspirasi.petugas) {
-      base44.auth.me().then((u) => setPetugas(u?.full_name || '')).catch(() => {});
+      // Use localStorage auth token instead
+      const userStr = localStorage.getItem('simdesta_auth_user');
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          setPetugas(user.full_name || '');
+        } catch {}
+      }
     }
     setPrevAspirasi(aspirasi);
   }, [aspirasi]);
@@ -52,7 +59,8 @@ export default function AspirasiDetailDialog({ open, onOpenChange, aspirasi, onS
     if (narasi && narasi !== (aspirasi.tanggapan || '')) {
       payload.tanggal_tanggapan = todayISO();
     }
-    await base44.entities.Aspirasi.update(aspirasi.id, payload);
+    const entity = createSupabaseEntity('Aspirasi');
+    await entity.update(aspirasi.id, payload);
     return status;
   };
 

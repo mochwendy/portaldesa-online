@@ -5,7 +5,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Pencil, MapPin, Calendar, Wallet, User, FileText, Download, Loader2 } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/lib/supabaseClient';
 
 const formatRupiah = (n) => 'Rp ' + new Intl.NumberFormat('id-ID').format(n || 0);
 const formatDate = (d) =>
@@ -40,7 +40,7 @@ export default function UsulanDetailDialog({ open, onOpenChange, item, onEdit })
       let active = true;
       (async () => {
         try {
-          const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({ file_uri: item.musdus_file_uri });
+          const { signed_url } = await supabase.storage.from('surat-pdf').createSignedUrl(item.musdus_file_uri, 3600 || 3600);
           if (active) setMusdusUrl(signed_url);
         } catch (e) { console.error(e); }
         finally { if (active) setLoadingDoc(false); }
@@ -48,8 +48,6 @@ export default function UsulanDetailDialog({ open, onOpenChange, item, onEdit })
       return () => { active = false; };
     }
   }, [open, item]);
-
-  if (!item) return null;
 
   const handleEdit = () => {
     onOpenChange(false);

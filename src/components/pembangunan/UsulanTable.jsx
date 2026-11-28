@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { base44 } from '@/api/base44Client';
 
 const PRIORITAS_STYLES = {
   'Sangat Tinggi': 'bg-red-100 text-red-700',
@@ -13,7 +12,6 @@ const PRIORITAS_STYLES = {
   'Rendah': 'bg-gray-100 text-gray-700',
 };
 
-const KATEGORI_OPTIONS = ['Infrastruktur Jalan', 'Sarana Air Bersih', 'Irigasi', 'Pendidikan', 'Kesehatan', 'Sarana Umum', 'Ekonomi Produktif', 'Kebersihan', 'Penerangan', 'Lainnya'];
 const STATUS_OPTIONS = ['Diajukan', 'Diverifikasi', 'Disetujui', 'Masuk Anggaran', 'Ditolak', 'Direalisasi', 'Selesai'];
 
 const formatRupiah = (n) => 'Rp ' + new Intl.NumberFormat('id-ID').format(n || 0);
@@ -24,7 +22,7 @@ export default function UsulanTable({ usulan, onEdit, onDelete, onStatusChange, 
   const handleDownload = async (u) => {
     setDownloading(u.id);
     try {
-      const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({ file_uri: u.musdus_file_uri });
+      const { signed_url } = await supabase.storage.from('surat-pdf').createSignedUrl(u.musdus_file_uri, 3600 || 3600);
       window.open(signed_url, '_blank');
     } catch (e) { console.error(e); }
     finally { setDownloading(null); }

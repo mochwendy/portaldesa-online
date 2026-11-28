@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { createSupabaseEntity } from '@/api/supabaseAdapter';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose
 } from '@/components/ui/dialog';
@@ -55,10 +55,11 @@ export default function RealisasiFormDialog({ open, onOpenChange, editingItem, o
         realisasi_anggaran: Number(form.realisasi_anggaran) || 0,
         persentase_progress: Math.min(100, Math.max(0, Number(form.persentase_progress) || 0)),
       };
+      const entity = createSupabaseEntity('RealisasiPembangunan');
       if (editingItem) {
-        await base44.entities.RealisasiPembangunan.update(editingItem.id, data);
+        await entity.update(editingItem.id, data);
       } else {
-        await base44.entities.RealisasiPembangunan.create(data);
+        await entity.create(data);
       }
       onOpenChange(false);
       onSaved();

@@ -9,16 +9,22 @@ export function buatKodeVerifikasi() {
   return `SMD-${acak.slice(0, 4)}-${acak.slice(4)}`;
 }
 
-// Tautan QR selalu menunjuk ke domain resmi portal desa (bukan domain default aplikasi).
-export const DOMAIN_VERIFIKASI = 'https://tagogapu.portaldesa.online';
+// Get the base URL for verification links - uses app's own origin
+function getBaseUrl() {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  // Fallback for SSR/build time
+  return import.meta.env.VITE_APP_URL || 'http://localhost:5173';
+}
 
 export function urlVerifikasi(kode) {
-  return `${DOMAIN_VERIFIKASI}/verifikasi-surat?kode=${encodeURIComponent(kode)}`;
+  return `${getBaseUrl()}/verifikasi-surat?kode=${encodeURIComponent(kode)}`;
 }
 
 // Tautan tetap untuk mengunduh PDF surat (dibagikan melalui WhatsApp warga).
 export function urlUnduhSurat(kode) {
-  return `${DOMAIN_VERIFIKASI}/unduh-surat?kode=${encodeURIComponent(kode)}`;
+  return `${getBaseUrl()}/unduh-surat?kode=${encodeURIComponent(kode)}`;
 }
 
 export function buatQrSurat(kode) {

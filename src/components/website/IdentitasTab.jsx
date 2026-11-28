@@ -1,11 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Image } from '@/components/ui/image';
 import { useToast } from '@/components/ui/use-toast';
 import { Upload, Trash2, ImageIcon, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function IdentitasTab({ form, onChange }) {
   const inputRef = useRef(null);
@@ -17,8 +17,18 @@ export default function IdentitasTab({ form, onChange }) {
     if (!file) return;
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadPublicFile({ file });
-      onChange('logo_url', file_url);
+      const filePath = `logo/${Date.now()}-${file.name}`;
+      const { data, error } = await supabase.storage.from('surat-pdf').upload(filePath, file, { cacheControl: '3600' });
+      if (error) throw error;
+      
+      // Create signed URL (1 year expiry) for public access
+      const { data: signedUrlData, error: urlError } = await supabase.storage
+        .from('surat-pdf')
+        .createSignedUrl(data.path, 31536000);
+      
+      if (urlError) throw urlError;
+      
+      onChange('logo_url', signedUrlData?.signedUrl || `/data/files/${data.path}`);
       toast({ title: 'Logo berhasil diunggah' });
     } catch (err) {
       toast({ title: 'Gagal mengunggah logo', description: err.message, variant: 'destructive' });

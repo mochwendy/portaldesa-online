@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
-import { ShieldCheck, Search, Loader2 } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
+import { ShieldCheck, Search, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import VerifikasiSuratHasil from '@/components/surat/VerifikasiSuratHasil';
+import { transformRow } from '@/api/supabaseAdapter';
 
 export default function VerifikasiSurat() {
   const { kode: kodeParam } = useParams();
@@ -26,8 +27,41 @@ export default function VerifikasiSurat() {
     setError('');
     setHasil(null);
     try {
-      const res = await base44.functions.invoke('verifySurat', { kode: bersih });
-      setHasil(res.data);
+      if (!isSupabaseConfigured()) {
+        setError('Supabase tidak dikonfigurasi. Silakan hubungi administrator.');
+        return;
+      }
+      
+      const { data, error: dbError } = await supabase
+        .from('SuratKeterangan')
+        .select('*')
+        .eq('data->>kode_verifikasi', bersih)
+        .single();
+      
+      if (dbError || !data) {
+        setError('Surat dengan kode verifikasi tersebut tidak ditemukan.');
+        return;
+      }
+      
+      const surat = transformRow(data);
+      
+      // Build verification result
+      const verificationResult = {
+        valid: true,
+        kode_verifikasi: surat.kode_verifikasi,
+        nomor_surat: surat.nomor_surat,
+        jenis_surat: surat.jenis_surat,
+        nama_pemohon: surat.nama_pemohon,
+        nik_pemohon: surat.nik_pemohon,
+        tanggal_surat: surat.tanggal_surat,
+        status: surat.status,
+        pejabat_nama: surat.pejabat_nama,
+        pejabat_jabatan: surat.pejabat_jabatan,
+        tipe_ttd: surat.tipe_ttd,
+        pdf_file_uri: surat.pdf_file_uri,
+      };
+      
+      setHasil(verificationResult);
     } catch (e) {
       setError(e?.message || 'Gagal memverifikasi surat. Coba beberapa saat lagi.');
     } finally {
@@ -88,6 +122,11 @@ export default function VerifikasiSurat() {
         )}
 
         {!loading && hasil && <VerifikasiSuratHasil hasil={hasil} />}
+        {!loading && !hasil && !error && !kodeAwal && (
+          <div className="text-center text-muted-foreground py-10">
+            <p>Masukkan kode verifikasi untuk memulai verifikasi.</p>
+          </div>
+        )}
       </div>
     </div>
   );

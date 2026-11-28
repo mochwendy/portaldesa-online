@@ -1,6 +1,6 @@
 // Notifikasi WhatsApp saat permohonan surat dinyatakan selesai.
 // Surat bertanda tangan QR disertai tautan unduh PDF surat (tautan tetap ke portal desa).
-import { base44 } from '@/api/base44Client';
+import { createSupabaseEntity } from '@/api/supabaseAdapter';
 import { buatPdfSuratUri } from '@/lib/suratPdf';
 import { urlUnduhSurat } from '@/lib/suratVerifikasi';
 import { buildWhatsAppLink, buildSuratSelesaiMessage } from '@/lib/whatsapp';
@@ -19,7 +19,8 @@ export async function kirimNotifikasiSelesai(surat, namaDesa) {
     if (surat.tipe_ttd === 'QR' && surat.kode_verifikasi) {
       const file_uri = await buatPdfSuratUri(surat);
       if (surat.id) {
-        await base44.entities.SuratKeterangan.update(surat.id, { pdf_file_uri: file_uri });
+        const suratEntity = createSupabaseEntity('SuratKeterangan');
+        await suratEntity.update(surat.id, { pdf_file_uri: file_uri });
       }
       pdfUrl = urlUnduhSurat(surat.kode_verifikasi);
     }

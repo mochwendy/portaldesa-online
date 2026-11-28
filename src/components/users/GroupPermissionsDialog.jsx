@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { createSupabaseEntity } from '@/api/supabaseAdapter.js';
 import {
   Dialog, DialogContent, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
@@ -79,7 +79,8 @@ export default function GroupPermissionsDialog({ open, onOpenChange, group, onSa
     if (!group) return;
     setSaving(true);
     try {
-      await base44.entities.UserGroup.update(group.id, {
+      const entity = createSupabaseEntity('UserGroup');
+      await entity.update(group.id, {
         permissions: serializePermissions(perms),
       });
       onOpenChange(false);

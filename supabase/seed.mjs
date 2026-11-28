@@ -35,7 +35,24 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 // Remove trailing /rest/v1/ if present for supabase-js client
 const baseUrl = SUPABASE_URL.replace(/\/rest\/v1\/?$/, '');
 
-const supabase = createClient(baseUrl, SUPABASE_ANON_KEY);
+const supabase = createClient(baseUrl, SUPABASE_ANON_KEY, {
+    db: {
+        schema: 'public'
+    },
+    global: {
+        fetch: fetch,
+        headers: {
+            'x-client-info': 'simdesta-seed-script'
+        }
+    },
+    auth: {
+        persistSession: false,
+        autoRefreshToken: false
+    },
+    realtime: {
+        enabled: false
+    }
+});
 
 // CSV to Table mapping (from base44Client.js entityFileMap)
 const CSV_TO_TABLE = {
@@ -98,10 +115,19 @@ function parseCSV(content) {
     });
 }
 
+// Generate UUID (compatible with Node.js 20)
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
 // Convert CSV row to Supabase record format
 function csvRowToRecord(row) {
     // Ensure we have an id
-    const id = row.id || crypto.randomUUID();
+    const id = row.id || generateUUID();
     // Store all fields in data JSONB
     const { id: _, ...data } = row;
     return { id, data };

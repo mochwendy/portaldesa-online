@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { createSupabaseEntity } from '@/api/supabaseAdapter.js';
 import {
   Dialog, DialogContent, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
@@ -79,10 +79,11 @@ export default function GroupFormDialog({ open, onOpenChange, group, onSaved }) 
         required_app_id: form.required_app_id,
         role_level: form.role_level,
       };
+      const entity = createSupabaseEntity('UserGroup');
       if (group) {
-        await base44.entities.UserGroup.update(group.id, payload);
+        await entity.update(group.id, payload);
       } else {
-        await base44.entities.UserGroup.create({
+        await entity.create({
           ...payload,
           permissions: serializePermissions({}),
           bawaan_sistem: false,

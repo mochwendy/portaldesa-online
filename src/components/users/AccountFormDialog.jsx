@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
+import { createSupabaseEntity, supabaseKelolaAkunAkses } from '@/api/supabaseAdapter.js';
 import {
   Dialog, DialogContent, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
@@ -60,7 +60,8 @@ export default function AccountFormDialog({ open, onOpenChange, account, onSaved
     } : EMPTY);
 
     setLoadingGroups(true);
-    base44.entities.UserGroup.list({ sort: 'urutan', limit: 100 })
+    const entity = createSupabaseEntity('UserGroup');
+    entity.list('urutan', 100)
       .then((res) => {
         const groups = Array.isArray(res) ? res : [];
         // Normalize kode AND nama before storing in state (ADMDES -> ADM, Admin Desa (ADMDES) -> Admin Desa)
@@ -77,9 +78,14 @@ export default function AccountFormDialog({ open, onOpenChange, account, onSaved
       .catch(() => setGroups([]))
       .finally(() => setLoadingGroups(false));
 
-    base44.auth.me()
-      .then((u) => setMeEmail((u?.email || '').toLowerCase()))
-      .catch(() => setMeEmail(''));
+    // Get current user from localStorage
+    try {
+      const userStr = localStorage.getItem('simdesta_auth_user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      setMeEmail((user?.email || '').toLowerCase());
+    } catch {
+      setMeEmail('');
+    }
   }, [open, account]);
 
   // Load permission preview when group changes
@@ -177,26 +183,18 @@ export default function AccountFormDialog({ open, onOpenChange, account, onSaved
       };
 
       if (account) {
-        await base44.functions.invoke('kelolaAkunAkses', { ...payload, action: 'save', id: account.id });
+        await supabaseKelolaAkunAkses({ ...payload, action: 'save', id: account.id });
         onOpenChange(false);
         onSaved?.();
         return;
       }
 
-      await base44.functions.invoke('kelolaAkunAkses', { ...payload, action: 'save' });
+      await supabaseKelolaAkunAkses({ ...payload, action: 'save' });
 
       let note = `Akun "${nama}" tersimpan. Email undangan untuk membuat kata sandi dikirim ke ${email}.`;
-      try {
-        await base44.users.inviteUser(email, role);
-      } catch (e) {
-        try {
-          await base44.auth.resetPasswordRequest(email);
-          note = `Akun "${nama}" tersimpan. Tautan pengaturan kata sandi dikirim ke ${email}.`;
-        } catch (e2) {
-          note = `Akun "${nama}" tersimpan, tetapi email undangan gagal dikirim. `
-            + 'Gunakan tombol "Kirim Tautan Sandi" pada daftar akun untuk mengirim ulang.';
-        }
-      }
+      // Note: inviteUser and resetPasswordRequest are not implemented in supabaseAdapter yet
+      // For now, just show success message
+      note = `Akun "${nama}" tersimpan. Silakan berikan informasi login kepada pengguna.`;
 
       onOpenChange(false);
       onSaved?.();

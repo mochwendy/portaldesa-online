@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { base44 } from '@/api/base44Client';
+import { supabaseSubmitAspirasi } from '@/api/supabaseAdapter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -80,7 +80,7 @@ export default function AspirasiForm() {
         payload.foto_bukti = photoFile;
       }
 
-      const res = await base44.functions.invoke('submitAspirasi', payload);
+      const res = await supabaseSubmitAspirasi(payload);
       const result = res?.data;
 
       if (!result) {

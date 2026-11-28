@@ -1,5 +1,6 @@
-import { base44 } from '@/api/base44Client';
+import { createSupabaseEntity } from '@/api/supabaseAdapter';
 import { loadLocalData } from './localData';
+import { isSupabaseConfigured } from '@/lib/supabaseClient';
 
 export const FONT_OPTIONS = ['Plus Jakarta Sans', 'Inter', 'Poppins', 'Merriweather'];
 
@@ -61,8 +62,13 @@ export async function fetchSettings(force = false) {
   if (!force && inflight) return inflight;
   inflight = (async () => {
     try {
-      const list = await base44.entities.WebsiteSetting.list('-updated_date', 1);
-      publish({ ...DEFAULT_SETTINGS, ...(list[0] || {}) });
+      if (isSupabaseConfigured()) {
+        const entity = createSupabaseEntity('WebsiteSetting');
+        const list = await entity.list('-updated_date', 1);
+        publish({ ...DEFAULT_SETTINGS, ...(list[0] || {}) });
+      } else {
+        throw new Error('Supabase not configured');
+      }
     } catch (e) {
       console.warn('API fetchSettings failed, falling back to local CSV', e);
       // Fallback ke CSV lokal

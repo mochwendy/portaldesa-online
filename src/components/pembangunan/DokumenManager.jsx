@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { base44 } from '@/api/base44Client';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/supabaseClient';
 
 const JENIS_OPTIONS = ['Juklak', 'Juknis', 'RKPDes', 'RPJMDes', 'Peraturan Desa', 'Lainnya'];
 
@@ -21,8 +22,11 @@ export default function DokumenManager({ dokumen, onRefresh }) {
     if (!file) return;
     setUploading(true);
     try {
-      const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file });
-      await base44.entities.DokumenPembangunan.create({ ...form, tahun: Number(form.tahun), file_uri });
+      const filePath = `dokumen-${Date.now()}-${file.name}`;
+      const { data, error } = await supabase.storage.from('surat-pdf').upload(filePath, file, { cacheControl: '3600', upsert: true });
+      if (error) throw error;
+      const fileUri = data.path;
+      await base44.entities.DokumenPembangunan.create({ ...form, tahun: Number(form.tahun), file_uri: fileUri });
       setForm({ nama_dokumen: '', jenis_dokumen: 'Juklak', tahun: 2026, deskripsi: '', tanggal_upload: new Date().toISOString().split('T')[0] });
       setFile(null);
       e.target.reset();
@@ -33,7 +37,8 @@ export default function DokumenManager({ dokumen, onRefresh }) {
 
   const handleDownload = async (doc) => {
     try {
-      const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({ file_uri: doc.file_uri });
+      const filePath = doc.file_uri;
+      const { signed_url } = await supabase.storage.from('surat-pdf').createSignedUrl(filePath, 3600);
       window.open(signed_url, '_blank');
     } catch (err) { console.error(err); }
   };
@@ -75,7 +80,15 @@ export default function DokumenManager({ dokumen, onRefresh }) {
             <Input type="file" accept=".pdf,.doc,.docx" onChange={e => setFile(e.target.files[0])} required />
           </div>
           <Button type="submit" disabled={uploading || !file} className="min-w-[120px]">
-            {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Upload...</> : <><Upload className="w-4 h-4" /> Upload</>}
+            {uploading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Upload...
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4" /> Upload
+              </>
+            )}
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-2">File disimpan secara privat. Masyarakat dapat mengunduh melalui halaman publik Rencana Pembangunan.</p>

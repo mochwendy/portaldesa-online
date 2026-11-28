@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { base44 } from '@/api/base44Client';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
+import { createSupabaseEntity } from '@/api/supabaseAdapter';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2, Printer, Save, CheckCircle } from 'lucide-react';
@@ -43,10 +44,37 @@ export default function SuratProsesDialog({ open, onOpenChange, record, nomorBar
   const selected = pejabat.find((o) => o.id === s.pejabatId);
 
   const validate = async (nik = s.nik) => {
+    const rawNik = String(nik ?? '').trim();
+    const cleanNik = rawNik.replace(/\D/g, '');
+    console.log('[SuratProsesDialog.validate] Input:', { raw: rawNik, normalized: cleanNik, length: cleanNik.length });
+
+    if (cleanNik.length !== 16) {
+      const msg = `NIK harus 16 digit angka (saat ini ${cleanNik.length} digit).`;
+      console.warn('[SuratProsesDialog.validate] Invalid length:', cleanNik.length);
+      set({ validating: false, nikError: msg, penduduk: null });
+      return;
+    }
+
     set({ validating: true, nikError: '' });
-    const found = (await base44.entities.Penduduk.filter({ nik }))[0];
-    if (!found) set({ penduduk: null, validating: false, nikError: 'NIK belum tercatat di modul Data Penduduk. Tambahkan dahulu data penduduk tersebut.' });
-    else set({ penduduk: found, validating: false });
+    try {
+      if (!isSupabaseConfigured()) {
+        set({ penduduk: null, validating: false, nikError: 'Supabase tidak dikonfigurasi.' });
+        return;
+      }
+      const pendudukEntity = createSupabaseEntity('Penduduk');
+      const result = await pendudukEntity.filter({ nik: cleanNik });
+      const items = result?.items || [];
+      console.log('[SuratProsesDialog.validate] Query result:', { count: items.length, found: items[0] ? { nik: items[0].nik, nama: items[0].nama_lengkap } : null });
+
+      if (items.length === 0) {
+        set({ penduduk: null, validating: false, nikError: 'NIK tidak ditemukan di Data Penduduk. Tambahkan dahulu data penduduk tersebut.' });
+      } else {
+        set({ penduduk: items[0], validating: false, nikError: '' });
+      }
+    } catch (e) {
+      console.error('[SuratProsesDialog.validate] Technical error:', e);
+      set({ penduduk: null, validating: false, nikError: 'Terjadi kesalahan saat memeriksa NIK. Periksa koneksi atau coba lagi.' });
+    }
   };
 
   useEffect(() => {
@@ -65,12 +93,18 @@ export default function SuratProsesDialog({ open, onOpenChange, record, nomorBar
     }
     setS(base);
     (async () => {
-      const [pj, pf] = await Promise.all([
-        base44.entities.PerangkatDesa.list('urutan', 100),
-        base44.entities.ProfilDesa.list('-created_date', 1),
-      ]);
-      setPejabat(pj); setProfil(pf[0] || null);
-      setKopState(loadKop(pf[0] || null));
+      try {
+        if (isSupabaseConfigured()) {
+          const [pj, pf] = await Promise.all([
+            createSupabaseEntity('PerangkatDesa').list('urutan', 100),
+            createSupabaseEntity('ProfilDesa').list('-created_date', 1),
+          ]);
+          setPejabat(pj); setProfil(pf[0] || null);
+          setKopState(loadKop(pf[0] || null));
+        }
+      } catch (e) {
+        console.error('Failed to load pejabat/profil:', e);
+      }
       if (record?.nik_pemohon) validate(record.nik_pemohon);
     })();
   }, [open, record]);
@@ -78,8 +112,12 @@ export default function SuratProsesDialog({ open, onOpenChange, record, nomorBar
   useEffect(() => {
     setTtdUrl('');
     if (!selected?.ttd_file_uri) return;
-    base44.integrations.Core.CreateFileSignedUrl({ file_uri: selected.ttd_file_uri, expires_in: 3600 })
-      .then((r) => setTtdUrl(r.signed_url));
+    if (isSupabaseConfigured()) {
+      supabase.storage
+        .from('surat-pdf')
+        .createSignedUrl(selected.ttd_file_uri, 3600)
+        .then(({ data }) => data?.signedUrl && setTtdUrl(data.signedUrl));
+    }
   }, [selected?.id, selected?.ttd_file_uri]);
 
   useEffect(() => {
@@ -96,9 +134,18 @@ export default function SuratProsesDialog({ open, onOpenChange, record, nomorBar
   const uploadTtd = async (file) => {
     setUploading(true);
     try {
-      const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file });
-      await base44.entities.PerangkatDesa.update(selected.id, { ttd_file_uri: file_uri });
-      setPejabat((prev) => prev.map((o) => (o.id === selected.id ? { ...o, ttd_file_uri: file_uri } : o)));
+      if (!isSupabaseConfigured() || !selected) return;
+      const filePath = `ttd/${selected.id}/${file.name}`;
+      const { data, error } = await supabase.storage
+        .from('surat-pdf')
+        .upload(filePath, file, { cacheControl: '3600', upsert: true });
+      
+      if (error) throw error;
+      
+      // Update PerangkatDesa with the ttd_file_uri
+      const perangkatEntity = createSupabaseEntity('PerangkatDesa');
+      await perangkatEntity.update(selected.id, { ttd_file_uri: data.path });
+      setPejabat((prev) => prev.map((o) => (o.id === selected.id ? { ...o, ttd_file_uri: data.path } : o)));
     } finally { setUploading(false); }
   };
 
@@ -117,6 +164,8 @@ export default function SuratProsesDialog({ open, onOpenChange, record, nomorBar
     if (!s.penduduk) { setErr('Validasi NIK terlebih dahulu. NIK harus terdaftar di Data Penduduk.'); setTab(0); return; }
     if (!selected) { setErr('Pilih pejabat penandatangan.'); setTab(1); return; }
     if (s.tipeTtd === 'Digital' && !ttdUrl) { setErr('Tanda tangan digital pejabat belum diunggah.'); setTab(1); return; }
+    if (!isSupabaseConfigured()) { setErr('Supabase tidak dikonfigurasi.'); return; }
+    
     setSaving(true);
     const data = {
       nomor_surat: s.nomor, nik_pemohon: s.penduduk.nik, nama_pemohon: s.penduduk.nama_lengkap,
@@ -130,9 +179,15 @@ export default function SuratProsesDialog({ open, onOpenChange, record, nomorBar
         : { kode_verifikasi: '', waktu_ttd: null }),
     };
     try {
-      const saved = record
-        ? (await base44.entities.SuratKeterangan.update(record.id, data), { ...data, id: record.id })
-        : await base44.entities.SuratKeterangan.create({ ...data, channel: 'Loket Desa' });
+      const suratEntity = createSupabaseEntity('SuratKeterangan');
+      let saved;
+      if (record) {
+        await suratEntity.update(record.id, data);
+        saved = { ...data, id: record.id };
+      } else {
+        const created = await suratEntity.create({ ...data, channel: 'Loket Desa' });
+        saved = created;
+      }
       if (status === 'Selesai' && s.telp) await kirimNotifikasiSelesai(saved);
       onSaved(); onOpenChange(false);
     } catch (e) { setErr(e?.message || 'Gagal menyimpan surat'); }

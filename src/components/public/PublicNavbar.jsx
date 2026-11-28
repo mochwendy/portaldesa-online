@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { Menu, X, Building2, Lock } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { createSupabaseEntity } from '@/api/supabaseAdapter.js';
 import { Image } from '@/components/ui/image';
 import useWebsiteSettings from '@/hooks/useWebsiteSettings';
 import { useAuth } from '@/lib/AuthContext';
@@ -25,7 +25,8 @@ export default function PublicNavbar() {
   const { isAuthenticated, isLoadingAuth } = useAuth();
 
   useEffect(() => {
-    base44.entities.MenuPortal.filter(
+    const menuEntity = createSupabaseEntity('MenuPortal');
+    menuEntity.filter(
       { published: true, kategori: 'menu_utama' },
       { sort: 'urutan', limit: 50 }
     )

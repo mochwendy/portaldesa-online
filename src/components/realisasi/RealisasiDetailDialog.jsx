@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Image as ImageComponent } from '@/components/ui/image';
 import { Pencil, MapPin, Calendar, Wallet, User, FileText, Loader2 } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/lib/supabaseClient';
 
 const formatRupiah = (n) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0);
@@ -31,7 +31,7 @@ function PhotoPreview({ uri, label }) {
     let active = true;
     (async () => {
       try {
-        const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({ file_uri: uri });
+        const { signed_url } = await supabase.storage.from('surat-pdf').createSignedUrl(uri, 3600 || 3600);
         if (active) setSignedUrl(signed_url);
       } catch (e) { console.error(e); }
       finally { if (active) setLoading(false); }

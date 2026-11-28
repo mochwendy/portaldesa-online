@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, FileText, MessagesSquare, Store, RefreshCw } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { getPortalNotifications } from '@/api/supabaseAdapter.js';
 import { STATUS_STYLES } from '@/components/aspirasi/AspirasiTable';
 
 const GROUPS = [
@@ -28,13 +28,16 @@ export default function PortalNotifications() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const load = () => {
+  const load = async () => {
     setLoading(true);
-    base44.functions
-      .invoke('getPortalNotifications')
-      .then((res) => setData(res.data))
-      .catch((e) => console.error(e))
-      .finally(() => setLoading(false));
+    try {
+      const res = await getPortalNotifications();
+      setData(res);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

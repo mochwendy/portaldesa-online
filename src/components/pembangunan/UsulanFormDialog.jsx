@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, FileText, X } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/lib/supabaseClient';
 
 const KATEGORI_OPTIONS = ['Infrastruktur Jalan', 'Sarana Air Bersih', 'Irigasi', 'Pendidikan', 'Kesehatan', 'Sarana Umum', 'Ekonomi Produktif', 'Kebersihan', 'Penerangan', 'Lainnya'];
 const PRIORITAS_OPTIONS = ['Sangat Tinggi', 'Tinggi', 'Sedang', 'Rendah'];
@@ -35,8 +35,10 @@ export default function UsulanFormDialog({ open, onClose, onSubmit, editing }) {
     if (musdusFile) {
       setUploading(true);
       try {
-        const res = await base44.integrations.Core.UploadPrivateFile({ file: musdusFile });
-        musdus_file_uri = res.file_uri;
+        const filePath = `usulan-${Date.now()}-${musdusFile.name}`;
+        const { data, error } = await supabase.storage.from('surat-pdf').upload(filePath, musdusFile, { cacheControl: '3600' });
+        if (error) throw error;
+        musdus_file_uri = data.path;
       } catch (err) { console.error(err); setUploading(false); return; }
       finally { setUploading(false); }
     }
@@ -132,7 +134,11 @@ export default function UsulanFormDialog({ open, onClose, onSubmit, editing }) {
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={uploading}>Batal</Button>
             <Button type="submit" disabled={uploading}>
-              {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Upload...</> : (editing ? 'Simpan Perubahan' : 'Tambah Usulan')}
+              {uploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Upload...
+                </>
+              ) : (editing ? 'Simpan Perubahan' : 'Tambah Usulan')}
             </Button>
           </DialogFooter>
         </form>

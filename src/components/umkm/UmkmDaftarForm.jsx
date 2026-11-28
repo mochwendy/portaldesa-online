@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { createSupabaseEntity } from '@/api/supabaseAdapter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/select';
 import { Image } from '@/components/ui/image';
 import { Loader2, Upload, X } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 
 const KATEGORI = ['Kuliner', 'Kerajinan', 'Pertanian', 'Perdagangan', 'Jasa', 'Pariwisata', 'Lainnya'];
 
@@ -37,8 +38,11 @@ export default function UmkmDaftarForm({ onSubmitted }) {
     setError('');
     setUploading(true);
     try {
-      const res = await base44.integrations.Core.UploadPublicFile({ file });
-      setForm((f) => ({ ...f, gambar_url: res.file_url }));
+      const filePath = `umkm-${Date.now()}-${file.name}`;
+      const { data, error: uploadErr } = await supabase.storage.from('surat-pdf').upload(filePath, file, { cacheControl: '3600' });
+      if (uploadErr) throw uploadErr;
+      const file_url = data.path;
+      setForm((f) => ({ ...f, gambar_url: file_url }));
     } catch (err) {
       setError(err?.message || 'Gagal mengunggah foto produk');
     } finally {
@@ -56,7 +60,8 @@ export default function UmkmDaftarForm({ onSubmitted }) {
     }
     setLoading(true);
     try {
-      const created = await base44.entities.UMKM.create({ ...form, status: 'Aktif' });
+      const entity = createSupabaseEntity('UMKM');
+      const created = await entity.create({ ...form, status: 'Aktif' });
       onSubmitted?.(created);
     } catch (err) {
       setError(err?.message || 'Gagal menyimpan data UMKM');

@@ -1,12 +1,13 @@
 // Membuat berkas PDF surat dari data tersimpan, untuk dilampirkan pada notifikasi WhatsApp.
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { base44 } from '@/api/base44Client';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import { buildLetterHtml } from '@/lib/suratDocument';
 import { buatQrSurat } from '@/lib/suratVerifikasi';
 import { loadKop } from '@/lib/suratKop';
 import { findTemplate, buildVars, fillTemplate } from '@/lib/suratTemplates';
 import { safeJsonParse } from '@/utils';
+import { createSupabaseEntity } from '@/api/supabaseAdapter';
 
 const PAGE_W = 215;
 const PAGE_H = 330;
@@ -24,7 +25,8 @@ async function isiSurat(record, profil) {
   if (record.isi_surat) return record.isi_surat;
   const template = findTemplate(record.jenis_surat);
   if (!template) return '';
-  const penduduk = (await base44.entities.Penduduk.filter({ nik: record.nik_pemohon }))[0];
+  const pendudukEntity = createSupabaseEntity('Penduduk');
+  const penduduk = (await pendudukEntity.filter({ nik: record.nik_pemohon })).items[0];
   if (!penduduk) return '';
   const extras = safeJsonParse(record.extras_json, {});
   return fillTemplate(template.body, buildVars(penduduk, profil, extras, record.keperluan || ''));
@@ -62,17 +64,23 @@ async function htmlKePdfBlob(html) {
 }
 
 /**
- * Membuat PDF surat lalu mengunggahnya secara privat (stored privately).
+ * Membuat PDF surat lalu mengunggahnya ke Supabase Storage (bucket: surat-pdf).
  * Mengembalikan file_uri; warga mengunduhnya lewat halaman /unduh-surat?kode=...
  */
 export async function buatPdfSuratUri(record) {
-  const [profil] = await base44.entities.ProfilDesa.list('-created_date', 1);
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase tidak dikonfigurasi');
+  }
+  
+  const profilEntity = createSupabaseEntity('ProfilDesa');
+  const [profil] = await profilEntity.list('-created_date', 1);
   const kop = loadKop(profil);
   const kode = record.kode_verifikasi || '';
   const qr = record.tipe_ttd === 'QR' && kode ? await buatQrSurat(kode) : '';
-  const perangkat = record.pejabat_id
-    ? (await base44.entities.PerangkatDesa.list('urutan', 100)).find((p) => p.id === record.pejabat_id)
-    : null;
+  
+  const perangkatEntity = createSupabaseEntity('PerangkatDesa');
+  const perangkatList = await perangkatEntity.list('urutan', 100);
+  const perangkat = perangkatList.find((p) => p.id === record.pejabat_id) || null;
 
   const html = buildLetterHtml({
     kop,
@@ -97,6 +105,17 @@ export async function buatPdfSuratUri(record) {
   const blob = await htmlKePdfBlob(html);
   const namaBerkas = `${(record.nomor_surat || 'surat').replace(/[^a-zA-Z0-9._-]+/g, '-')}.pdf`;
   const file = new File([blob], namaBerkas, { type: 'application/pdf' });
-  const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file });
-  return file_uri;
+  
+  // Upload to Supabase Storage
+  const filePath = `surat/${record.id}/${namaBerkas}`;
+  const { data, error } = await supabase.storage
+    .from('surat-pdf')
+    .upload(filePath, file, { cacheControl: '3600', upsert: true });
+  
+  if (error) {
+    console.error('Error uploading PDF to Supabase Storage:', error);
+    throw error;
+  }
+  
+  return data.path;
 }

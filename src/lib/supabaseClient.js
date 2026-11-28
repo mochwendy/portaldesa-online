@@ -84,3 +84,12 @@ export function unsubscribe(channel) {
         supabase.removeChannel(channel);
     }
 }
+
+// Membersihkan string numerik/rupiah/Ribu menjadi Number valid; fallback 0 bila tidak valid.
+export function toNumber(val) {
+  if (typeof val === 'number' && Number.isFinite(val)) return val;
+  if (val == null) return 0;
+  const cleaned = String(val).replace(/[^0-9.,-]/g, '').replace(/\./g, '').replace(',', '.');
+  const num = parseFloat(cleaned);
+  return Number.isFinite(num) ? num : 0;
+}

@@ -1,6 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ShieldAlert, LogOut, ArrowLeft } from 'lucide-react';
 
@@ -10,6 +9,13 @@ import { ShieldAlert, LogOut, ArrowLeft } from 'lucide-react';
  */
 export default function AkunBelumTerdaftar({ alasan, email }) {
   const nonaktif = alasan === 'nonaktif';
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('simdesta_auth_token');
+    localStorage.removeItem('simdesta_auth_user');
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
@@ -33,7 +39,7 @@ export default function AkunBelumTerdaftar({ alasan, email }) {
           <Button variant="outline" asChild>
             <Link to="/"><ArrowLeft className="w-4 h-4" /> Portal Desa</Link>
           </Button>
-          <Button onClick={() => base44.auth.logout('/login')}>
+          <Button onClick={handleLogout}>
             <LogOut className="w-4 h-4" /> Keluar
           </Button>
         </div>

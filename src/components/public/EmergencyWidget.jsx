@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { createSupabaseEntity } from '@/api/supabaseAdapter.js';
 import { PhoneCall, MessageCircle, ShieldAlert, X, Phone } from 'lucide-react';
 
 export default function EmergencyWidget() {
@@ -10,7 +10,8 @@ export default function EmergencyWidget() {
   useEffect(() => {
     const loadContacts = async () => {
       try {
-        const data = await base44.entities.KontakDarurat.list('urutan', 100);
+        const entity = createSupabaseEntity('KontakDarurat');
+        const data = await entity.list('urutan', 100);
         setContacts(data.filter(c => c.aktif === true || c.aktif === 'true'));
       } catch (e) {
         console.error('Failed to load emergency contacts:', e);

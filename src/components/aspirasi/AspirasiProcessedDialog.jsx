@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { createSupabaseEntity } from '@/api/supabaseAdapter';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -18,7 +18,8 @@ export default function AspirasiProcessedDialog({ open, onOpenChange }) {
     if (!open) return;
     let active = true;
     setLoading(true);
-    base44.entities.Aspirasi
+    const entity = createSupabaseEntity('Aspirasi');
+    entity
       .filter({ status: { $in: PROCESSED_STATUS } }, { sort: '-updated_date', limit: 50 })
       .then((page) => {
         if (active) setItems(page.items || []);

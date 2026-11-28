@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient.js';
+import { supabase, isSupabaseConfigured, toNumber } from '@/lib/supabaseClient.js';
 
 function assertSupabase() {
     if (!isSupabaseConfigured()) {
@@ -37,7 +37,7 @@ export async function uploadAspirasiBuktiPhoto(file, nomorTiket) {
 }
 
 // Transform Supabase row (with data JSONB) to flat object matching CSV structure
-function transformRow(row) {
+export function transformRow(row) {
     if (!row) return null;
     // If row has data JSONB, merge it with root fields
     // Handle both object and string (Postgres JSONB can return string)
@@ -351,16 +351,28 @@ export function createSupabaseEntity(tableName) {
                 query = query.range(from, to);
             }
             
+            if (isPenduduk && queryObj?.nik) {
+                console.log('[supabaseAdapter.filter] Penduduk NIK query:', { queryObj, sort, limit, cursor });
+            }
+
             const { data, error, count } = await query;
-            if (error) throw error;
+            if (error) {
+                console.error('[supabaseAdapter.filter] Query error for', tableName, ':', error);
+                throw error;
+            }
             
+            if (isPenduduk && queryObj?.nik) {
+                console.log('[supabaseAdapter.filter] Penduduk NIK result:', { dataLength: data?.length, count });
+            }
+
             const items = transformRows(data, numericFields);
             const total = count || 0;
             const has_more = cursor + items.length < total;
             const next_cursor = has_more ? cursor + items.length : null;
             
             return { items, total, has_more, next_cursor };
-        } catch {
+        } catch (e) {
+            console.error('[supabaseAdapter.filter] Caught error for', tableName, ':', e?.message || e);
             return { items: [], total: 0, has_more: false, next_cursor: null };
         }
     }

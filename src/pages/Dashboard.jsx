@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { base44, toNumber } from '@/api/base44Client';
+import { toNumber } from '@/lib/supabaseClient.js';
+import { createSupabaseEntity } from '@/api/supabaseAdapter.js';
 import { Link } from 'react-router-dom';
 import {
   Users, FileText, Wallet, Store, Share2, TrendingUp,
@@ -43,21 +44,32 @@ export default function Dashboard() {
   useEffect(() => {
     (async () => {
       try {
+        const suratEntity = createSupabaseEntity('SuratKeterangan');
+        const apbdesEntity = createSupabaseEntity('APBDes');
+        const umkmEntity = createSupabaseEntity('UMKM');
+        const aspirasiEntity = createSupabaseEntity('Aspirasi');
+        const usulanEntity = createSupabaseEntity('UsulanPembangunan');
+        const realisasiEntity = createSupabaseEntity('RealisasiPembangunan');
+        const userGroupEntity = createSupabaseEntity('UserGroup');
+        const akunAksesEntity = createSupabaseEntity('AkunAkses');
+        const websiteSettingEntity = createSupabaseEntity('WebsiteSetting');
+        const pendudukEntity = createSupabaseEntity('Penduduk');
+
         const results = await Promise.allSettled([
           fetchPendudukStats(),
-          base44.entities.SuratKeterangan.list('-created_date', 10),
-          base44.entities.APBDes.filter({ tahun_anggaran: 2026 }),
-          base44.entities.UMKM.filter({ status: 'Aktif' }),
-          base44.entities.Aspirasi.list('-created_date', 6),
-          base44.entities.Aspirasi.count({ status: 'Baru' }),
-          base44.entities.Aspirasi.count({ status: { $in: ['Diproses', 'Dijawab'] } }),
-          base44.entities.Aspirasi.count({ status: 'Selesai' }),
-          base44.entities.UsulanPembangunan.list('-created_date', 100),
-          base44.entities.RealisasiPembangunan.list('-created_date', 100),
-          base44.entities.UserGroup.list({ limit: 500 }),
-          base44.entities.AkunAkses.list({ limit: 500 }),
-          base44.app.getPublicSettings(),
-          base44.entities.Penduduk.list({ limit: 1 }), // triggers demografi_summary via appSettings
+          suratEntity.list('-created_date', 10),
+          apbdesEntity.filter({ tahun_anggaran: 2026 }),
+          umkmEntity.filter({ status: 'Aktif' }),
+          aspirasiEntity.list('-created_date', 6),
+          aspirasiEntity.count({ status: 'Baru' }),
+          aspirasiEntity.count({ status: { $in: ['Diproses', 'Dijawab'] } }),
+          aspirasiEntity.count({ status: 'Selesai' }),
+          usulanEntity.list('-created_date', 100),
+          realisasiEntity.list('-created_date', 100),
+          userGroupEntity.list({ limit: 500 }),
+          akunAksesEntity.list({ limit: 500 }),
+          websiteSettingEntity.list('-created_date', 1),
+          pendudukEntity.list({ limit: 1 }), // triggers demografi_summary via appSettings
         ]);
         // Satu permintaan gagal tidak boleh mengosongkan seluruh dashboard.
         const [

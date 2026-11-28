@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { base44 } from '@/api/base44Client';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2, Download, Building2 } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 
 const formatRupiah = (n) => 'Rp ' + (n || 0).toLocaleString('id-ID');
 
@@ -22,7 +22,7 @@ export default function RealisasiBanner({ open, onOpenChange, kegiatan, profilDe
     await Promise.all(keys.map(async (key) => {
       if (kegiatan[key]) {
         try {
-          const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({ file_uri: kegiatan[key] });
+          const { signed_url } = await supabase.storage.from('surat-pdf').createSignedUrl(kegiatan[key], 3600 || 3600);
           urls[key] = signed_url;
         } catch (e) { /* ignore */ }
       }

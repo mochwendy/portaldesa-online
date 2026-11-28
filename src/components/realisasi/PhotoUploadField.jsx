@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Loader2, X, ImageIcon } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function PhotoUploadField({ label, fileUri, onChange, disabled }) {
   const [uploading, setUploading] = useState(false);
@@ -9,8 +10,8 @@ export default function PhotoUploadField({ label, fileUri, onChange, disabled })
   useEffect(() => {
     let active = true;
     if (fileUri) {
-      base44.integrations.Core.CreateFileSignedUrl({ file_uri: fileUri })
-        .then(({ signed_url }) => { if (active) setPreviewUrl(signed_url); })
+      supabase.storage.from('surat-pdf').createSignedUrl(fileUri, 3600 || 3600)
+        .then(({ data }) => { if (active) setPreviewUrl(data.signed_url); })
         .catch(() => { if (active) setPreviewUrl(''); });
     } else {
       setPreviewUrl('');
@@ -23,8 +24,10 @@ export default function PhotoUploadField({ label, fileUri, onChange, disabled })
     if (!file) return;
     setUploading(true);
     try {
-      const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file });
-      onChange(file_uri);
+      const filePath = `foto-${Date.now()}-${file.name}`;
+      const { data, error } = await supabase.storage.from('surat-pdf').upload(filePath, file, { cacheControl: '3600' });
+      if (error) throw error;
+      onChange(data.path);
     } catch (err) {
       console.error(err);
     } finally {
