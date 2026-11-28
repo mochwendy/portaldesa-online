@@ -5,6 +5,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Loader2, Download, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { resolveRealisasiPhotoUrl } from '@/lib/realisasiUtils';
 
 const formatRupiah = (n) => 'Rp ' + (n || 0).toLocaleString('id-ID');
 
@@ -22,9 +23,11 @@ export default function RealisasiBanner({ open, onOpenChange, kegiatan, profilDe
     await Promise.all(keys.map(async (key) => {
       if (kegiatan[key]) {
         try {
-          const { signed_url } = await supabase.storage.from('surat-pdf').createSignedUrl(kegiatan[key], 3600 || 3600);
-          urls[key] = signed_url;
-        } catch (e) { /* ignore */ }
+          const resolvedUrl = resolveRealisasiPhotoUrl(kegiatan[key]);
+          if (resolvedUrl) urls[key] = resolvedUrl;
+        } catch (e) {
+          console.error(`Gagal load photo ${key}:`, e.message);
+        }
       }
     }));
     setPhotoUrls(urls);

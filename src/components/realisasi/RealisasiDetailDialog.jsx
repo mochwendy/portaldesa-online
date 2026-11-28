@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Image as ImageComponent } from '@/components/ui/image';
 import { Pencil, MapPin, Calendar, Wallet, User, FileText, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { resolveRealisasiPhotoUrl } from '@/lib/realisasiUtils';
 
 const formatRupiah = (n) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0);
@@ -23,16 +24,16 @@ const STATUS_STYLES = {
 };
 
 function PhotoPreview({ uri, label }) {
-  const [signedUrl, setSignedUrl] = useState(null);
+  const [url, setUrl] = useState(null);
   const [loading, setLoading] = useState(!!uri);
 
   useEffect(() => {
-    if (!uri) { setLoading(false); return; }
+    if (!uri) { setUrl(null); setLoading(false); return; }
     let active = true;
     (async () => {
       try {
-        const { signed_url } = await supabase.storage.from('surat-pdf').createSignedUrl(uri, 3600 || 3600);
-        if (active) setSignedUrl(signed_url);
+        const resolvedUrl = resolveRealisasiPhotoUrl(uri);
+        if (active) setUrl(resolvedUrl);
       } catch (e) { console.error(e); }
       finally { if (active) setLoading(false); }
     })();
@@ -55,7 +56,7 @@ function PhotoPreview({ uri, label }) {
   }
   return (
     <div className="space-y-1">
-      <ImageComponent src={signedUrl} alt={label} className="aspect-video rounded-lg border border-border object-cover w-full" />
+      <ImageComponent src={url} alt={label} className="aspect-video rounded-lg border border-border object-cover w-full" />
       <p className="text-xs text-center text-muted-foreground">{label}</p>
     </div>
   );

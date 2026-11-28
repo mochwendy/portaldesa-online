@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Loader2, X, ImageIcon } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -10,9 +9,8 @@ export default function PhotoUploadField({ label, fileUri, onChange, disabled })
   useEffect(() => {
     let active = true;
     if (fileUri) {
-      supabase.storage.from('surat-pdf').createSignedUrl(fileUri, 3600 || 3600)
-        .then(({ data }) => { if (active) setPreviewUrl(data.signed_url); })
-        .catch(() => { if (active) setPreviewUrl(''); });
+      const { data } = supabase.storage.from('realisasi').getPublicUrl(fileUri);
+      if (active) setPreviewUrl(data.publicUrl);
     } else {
       setPreviewUrl('');
     }
@@ -23,13 +21,20 @@ export default function PhotoUploadField({ label, fileUri, onChange, disabled })
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    console.log('DEBUG: Starting upload for', file.name);
     try {
       const filePath = `foto-${Date.now()}-${file.name}`;
-      const { data, error } = await supabase.storage.from('surat-pdf').upload(filePath, file, { cacheControl: '3600' });
-      if (error) throw error;
-      onChange(data.path);
+      console.log('DEBUG: Uploading to bucket "realisasi" path:', filePath);
+      const { data, error } = await supabase.storage.from('realisasi').upload(filePath, file, { cacheControl: '3600' });
+      if (error) {
+        console.error('DEBUG: Upload error details:', error);
+        throw error;
+      }
+      console.log('DEBUG: Upload success:', data);
+      // Store full path including bucket name for consistency
+      onChange(`realisasi/${data.path}`);
     } catch (err) {
-      console.error(err);
+      console.error('DEBUG: Upload catch error:', err);
     } finally {
       setUploading(false);
     }
