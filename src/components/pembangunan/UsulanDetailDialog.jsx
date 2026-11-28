@@ -21,6 +21,10 @@ const STATUS_STYLES = {
   'Selesai': 'bg-emerald-100 text-emerald-700',
 };
 
+function getStatus(u) {
+  return u?.status || u?.data?.status || 'Menunggu';
+}
+
 const PRIORITAS_STYLES = {
   'Sangat Tinggi': 'bg-red-100 text-red-700',
   'Tinggi': 'bg-orange-100 text-orange-700',
@@ -29,6 +33,8 @@ const PRIORITAS_STYLES = {
 };
 
 export default function UsulanDetailDialog({ open, onOpenChange, item, onEdit }) {
+  if (!item) return null;
+  
   const [musdusUrl, setMusdusUrl] = useState(null);
   const [loadingDoc, setLoadingDoc] = useState(false);
 
@@ -60,8 +66,8 @@ export default function UsulanDetailDialog({ open, onOpenChange, item, onEdit })
         <DialogHeader>
           <DialogTitle className="flex items-start justify-between gap-3 pr-8">
             <span>Detail Usulan Pembangunan</span>
-            <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[item.status] || 'bg-muted text-muted-foreground'}`}>
-              {item.status}
+            <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[getStatus(item)] || 'bg-muted text-muted-foreground'}`}>
+              {getStatus(item)}
             </span>
           </DialogTitle>
         </DialogHeader>

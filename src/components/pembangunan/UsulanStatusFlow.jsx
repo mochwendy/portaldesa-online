@@ -9,9 +9,10 @@ const FLOW = [
 ];
 
 export default function UsulanStatusFlow({ usulan }) {
-  const counts = FLOW.map(f => ({ ...f, count: usulan.filter(u => u.status === f.status).length }));
+  const getStatus = (u) => u?.status || u?.data?.status || 'Menunggu';
+  const counts = FLOW.map(f => ({ ...f, count: usulan.filter(u => getStatus(u) === f.status).length }));
   const total = usulan.length;
-  const completed = usulan.filter(u => u.status === 'Masuk Anggaran').length;
+  const completed = usulan.filter(u => getStatus(u) === 'Masuk Anggaran').length;
   const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (

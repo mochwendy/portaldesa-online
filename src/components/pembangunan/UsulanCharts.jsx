@@ -9,23 +9,21 @@ const CHART_COLORS = [
 ];
 
 export default function UsulanCharts({ usulan }) {
+  const getStatus = (u) => u?.status || u?.data?.status || 'Menunggu';
   const kategoriData = {};
-  usulan.forEach(u => { kategoriData[u.kategori] = (kategoriData[u.kategori] || 0) + 1; });
+  usulan.forEach(u => { if (u) kategoriData[u.kategori] = (kategoriData[u.kategori] || 0) + 1; });
   const kategoriChart = Object.entries(kategoriData).map(([name, value]) => ({ name, value }));
 
   const rwData = {};
-  usulan.forEach(u => {
-    const key = u.rw ? `RW ${u.rw}` : (u.dusun || '-');
-    rwData[key] = (rwData[key] || 0) + 1;
-  });
+  usulan.forEach(u => { if (u) { const key = u.rw ? `RW ${u.rw}` : (u.dusun || '-'); rwData[key] = (rwData[key] || 0) + 1; } });
   const rwChart = Object.entries(rwData).map(([name, value]) => ({ name, value })).sort((a, b) => a.name.localeCompare(b.name));
 
   const prioritasData = {};
-  usulan.forEach(u => { prioritasData[u.prioritas] = (prioritasData[u.prioritas] || 0) + 1; });
+  usulan.forEach(u => { if (u) prioritasData[u.prioritas] = (prioritasData[u.prioritas] || 0) + 1; });
   const prioritasChart = Object.entries(prioritasData).map(([name, value]) => ({ name, value }));
 
   const anggaranData = {};
-  usulan.filter(u => u.status !== 'Ditolak').forEach(u => {
+  usulan.filter(u => u && getStatus(u) !== 'Ditolak').forEach(u => {
     anggaranData[u.kategori] = (anggaranData[u.kategori] || 0) + toNumber(u.estimasi_anggaran);
   });
   const anggaranChart = Object.entries(anggaranData).map(([name, value]) => ({ name, value: Math.round(value / 1000000) }));

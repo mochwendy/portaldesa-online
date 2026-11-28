@@ -13,6 +13,14 @@ const STATUS_STYLES = {
   'Diajukan': 'bg-amber-100 text-amber-700',
 };
 
+function normalizeUsulanData(rawList) {
+  return (rawList || []).filter(Boolean).map(item => ({ ...item, ...(item.data || {}) }));
+}
+
+function getStatus(u) {
+  return u?.status || u?.data?.status || 'Menunggu';
+}
+
 export default function RencanaPembangunanPublik() {
   const [usulan, setUsulan] = useState([]);
   const [dokumen, setDokumen] = useState([]);
@@ -26,7 +34,8 @@ export default function RencanaPembangunanPublik() {
           base44.entities.UsulanPembangunan.list('-tanggal_usulan', 500),
           base44.entities.DokumenPembangunan.filter({ status: 'Aktif' }),
         ]);
-        setUsulan(u?.items || u); setDokumen(d?.items || d);
+        setUsulan(normalizeUsulanData(u?.items || u));
+        setDokumen(normalizeUsulanData(d?.items || d));
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
     })();
@@ -45,15 +54,15 @@ export default function RencanaPembangunanPublik() {
     return <div className="flex items-center justify-center h-96"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
   }
 
-  const approved = usulan.filter(u => ['Disetujui', 'Direalisasi', 'Selesai'].includes(u.status));
+  const approved = usulan.filter(u => u && ['Disetujui', 'Direalisasi', 'Selesai'].includes(getStatus(u)));
   const totalAnggaran = approved.reduce((s, u) => s + toNumber(u.estimasi_anggaran), 0);
 
   const kategoriData = {};
-  approved.forEach(u => { kategoriData[u.kategori] = (kategoriData[u.kategori] || 0) + 1; });
+  approved.forEach(u => { if (u) kategoriData[u.kategori] = (kategoriData[u.kategori] || 0) + 1; });
   const kategoriChart = Object.entries(kategoriData).map(([name, value]) => ({ name, value }));
 
   const rwData = {};
-  usulan.forEach(u => { const key = u.rw ? `RW ${u.rw}` : (u.dusun || '-'); rwData[key] = (rwData[key] || 0) + 1; });
+  usulan.forEach(u => { if (u) { const key = u.rw ? `RW ${u.rw}` : (u.dusun || '-'); rwData[key] = (rwData[key] || 0) + 1; } });
   const rwChart = Object.entries(rwData).map(([name, value]) => ({ name, value })).sort((a, b) => a.name.localeCompare(b.name));
 
   const grouped = {};
@@ -145,7 +154,7 @@ export default function RencanaPembangunanPublik() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <h4 className="font-semibold text-sm">{u.judul_usulan}</h4>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[u.status] || 'bg-gray-100'}`}>{u.status}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[getStatus(u)] || 'bg-gray-100'}`}>{getStatus(u)}</span>
                         </div>
                         <p className="text-xs text-muted-foreground mb-1">{u.kategori} · Diusulkan oleh {u.pengusul}</p>
                         {u.deskripsi && <p className="text-sm text-muted-foreground mt-1">{u.deskripsi}</p>}

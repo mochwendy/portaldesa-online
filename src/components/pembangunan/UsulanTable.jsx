@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/lib/supabaseClient';
+import { KATEGORI_OPTIONS, PRIORITAS_OPTIONS, STATUS_OPTIONS } from './constants';
 
 const PRIORITAS_STYLES = {
   'Sangat Tinggi': 'bg-red-100 text-red-700',
@@ -12,9 +14,11 @@ const PRIORITAS_STYLES = {
   'Rendah': 'bg-gray-100 text-gray-700',
 };
 
-const STATUS_OPTIONS = ['Diajukan', 'Diverifikasi', 'Disetujui', 'Masuk Anggaran', 'Ditolak', 'Direalisasi', 'Selesai'];
-
 const formatRupiah = (n) => 'Rp ' + new Intl.NumberFormat('id-ID').format(n || 0);
+
+function getStatus(u) {
+  return u?.status || u?.data?.status || 'Menunggu';
+}
 
 export default function UsulanTable({ usulan, onEdit, onDelete, onStatusChange, onDetail, filters, onFilterChange }) {
   const [downloading, setDownloading] = useState(null);
@@ -74,50 +78,53 @@ export default function UsulanTable({ usulan, onEdit, onDelete, onStatusChange, 
           <tbody className="divide-y divide-border">
             {usulan.length === 0 ? (
               <tr><td colSpan={9} className="text-center p-8 text-muted-foreground">Tidak ada usulan ditemukan.</td></tr>
-            ) : usulan.map(u => (
-              <tr key={u.id} className="hover:bg-muted/30">
-                <td className="p-3">
-                  <p className="font-medium text-foreground">{u.judul_usulan}</p>
-                  <p className="text-xs text-muted-foreground">{u.pengusul} · {u.tanggal_usulan ? new Date(u.tanggal_usulan).toLocaleDateString('id-ID') : '-'}</p>
-                </td>
-                <td className="p-3 text-xs whitespace-nowrap">{u.rw ? `RW ${u.rw}` : '-'}{u.dusun ? ` / ${u.dusun}` : ''}</td>
-                <td className="p-3 text-xs whitespace-nowrap">{u.kategori}</td>
-                <td className="p-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PRIORITAS_STYLES[u.prioritas] || 'bg-gray-100'}`}>{u.prioritas}</span></td>
-                <td className="p-3 text-right text-xs font-medium whitespace-nowrap">{formatRupiah(u.estimasi_anggaran)}</td>
-                <td className="p-3">
-                  <Select value={u.status} onValueChange={v => onStatusChange(u.id, v)}>
-                    <SelectTrigger className="h-7 w-[130px] text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </td>
-                <td className="p-3 text-center">
-                  {u.terkait_apbdes ? <Badge className="bg-emerald-100 text-emerald-700 text-xs">Selaras</Badge> : <span className="text-muted-foreground text-xs">-</span>}
-                </td>
-                <td className="p-3 text-center">
-                  {u.musdus_file_uri ? (
+            ) : usulan.map(u => {
+              if (!u) return null;
+              return (
+                <tr key={u.id} className="hover:bg-muted/30">
+                  <td className="p-3">
+                    <p className="font-medium text-foreground">{u.judul_usulan || '-'}</p>
+                    <p className="text-xs text-muted-foreground">{u.pengusul || '-'} · {u.tanggal_usulan ? new Date(u.tanggal_usulan).toLocaleDateString('id-ID') : '-'}</p>
+                  </td>
+                  <td className="p-3 text-xs whitespace-nowrap">{u.rw ? `RW ${u.rw}` : '-'}{u.dusun ? ` / ${u.dusun}` : ''}</td>
+                  <td className="p-3 text-xs whitespace-nowrap">{u.kategori}</td>
+                  <td className="p-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PRIORITAS_STYLES[u.prioritas] || 'bg-gray-100'}`}>{u.prioritas}</span></td>
+                  <td className="p-3 text-right text-xs font-medium whitespace-nowrap">{formatRupiah(u.estimasi_anggaran)}</td>
+                  <td className="p-3">
+                    <Select value={getStatus(u)} onValueChange={v => onStatusChange(u.id, v)}>
+                      <SelectTrigger className="h-7 w-[130px] text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="p-3 text-center">
+                    {u.terkait_apbdes ? <Badge className="bg-emerald-100 text-emerald-700 text-xs">Selaras</Badge> : <span className="text-muted-foreground text-xs">-</span>}
+                  </td>
+                  <td className="p-3 text-center">
+                    {u.musdus_file_uri ? (
+                      <div className="flex items-center justify-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Preview MUSDUS" onClick={() => handleDownload(u)} disabled={downloading === u.id}>
+                          {downloading === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Unduh MUSDUS" onClick={() => handleDownload(u)} disabled={downloading === u.id}>
+                          <Download className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">-</span>
+                    )}
+                  </td>
+                  <td className="p-3">
                     <div className="flex items-center justify-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" title="Preview MUSDUS" onClick={() => handleDownload(u)} disabled={downloading === u.id}>
-                        {downloading === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" title="Unduh MUSDUS" onClick={() => handleDownload(u)} disabled={downloading === u.id}>
-                        <Download className="w-3.5 h-3.5" />
-                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" title="Lihat Detail" onClick={() => onDetail(u)}><Eye className="w-3.5 h-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(u)}><Pencil className="w-3.5 h-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(u)}><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>
-                  ) : (
-                    <span className="text-muted-foreground text-xs">-</span>
-                  )}
-                </td>
-                <td className="p-3">
-                  <div className="flex items-center justify-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" title="Lihat Detail" onClick={() => onDetail(u)}><Eye className="w-3.5 h-3.5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(u)}><Pencil className="w-3.5 h-3.5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(u)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

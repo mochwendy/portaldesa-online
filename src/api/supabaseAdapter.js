@@ -72,7 +72,7 @@ function convertNumericFields(row, numericFields = []) {
 
 function transformRows(rows, numericFields) {
     if (!Array.isArray(rows)) return [];
-    return rows.map(row => {
+    return rows.filter(row => row !== null && typeof row === 'object').map(row => {
         const transformed = transformRow(row);
         return convertNumericFields(transformed, numericFields);
     });

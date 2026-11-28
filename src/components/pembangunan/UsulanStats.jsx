@@ -6,12 +6,13 @@ const formatRupiah = (n) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0);
 
 export default function UsulanStats({ usulan }) {
-  const total = usulan.length;
-  const diajukan = usulan.filter(u => u.status === 'Diajukan').length;
-  const diverifikasi = usulan.filter(u => u.status === 'Diverifikasi').length;
-  const disetujui = usulan.filter(u => u.status === 'Disetujui').length;
-  const masukAnggaran = usulan.filter(u => u.status === 'Masuk Anggaran').length;
-  const totalAnggaran = usulan.filter(u => u.status !== 'Ditolak').reduce((s, u) => s + toNumber(u.estimasi_anggaran), 0);
+  const getStatus = (u) => u?.status || u?.data?.status || 'Menunggu';
+  const total = usulan.filter(Boolean).length;
+  const diajukan = usulan.filter(u => u && getStatus(u) === 'Diajukan').length;
+  const diverifikasi = usulan.filter(u => u && getStatus(u) === 'Diverifikasi').length;
+  const disetujui = usulan.filter(u => u && getStatus(u) === 'Disetujui').length;
+  const masukAnggaran = usulan.filter(u => u && getStatus(u) === 'Masuk Anggaran').length;
+  const totalAnggaran = usulan.filter(u => u && getStatus(u) !== 'Ditolak').reduce((s, u) => s + toNumber(u.estimasi_anggaran), 0);
 
   const stats = [
     { icon: ClipboardList, label: 'Total Usulan', value: total, color: 'text-primary', bg: 'bg-primary/10' },

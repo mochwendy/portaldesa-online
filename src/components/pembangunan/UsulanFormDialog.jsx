@@ -8,9 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, FileText, X } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
-
-const KATEGORI_OPTIONS = ['Infrastruktur Jalan', 'Sarana Air Bersih', 'Irigasi', 'Pendidikan', 'Kesehatan', 'Sarana Umum', 'Ekonomi Produktif', 'Kebersihan', 'Penerangan', 'Lainnya'];
-const PRIORITAS_OPTIONS = ['Sangat Tinggi', 'Tinggi', 'Sedang', 'Rendah'];
+import { KATEGORI_OPTIONS, PRIORITAS_OPTIONS } from './constants';
 
 const emptyForm = {
   judul_usulan: '', pengusul: '', rw: '', dusun: '', kategori: 'Infrastruktur Jalan',

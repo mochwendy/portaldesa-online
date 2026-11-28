@@ -14,6 +14,10 @@ const formatRupiah = (n) => 'Rp ' + new Intl.NumberFormat('id-ID').format(n || 0
 
 const safeArray = (val) => (Array.isArray(val) ? val : []);
 
+function normalizeUsulanData(rawList) {
+  return (rawList || []).filter(Boolean).map(item => ({ ...item, ...(item.data || {}) }));
+}
+
 export default function UsulanPembangunanAdmin() {
   const [usulan, setUsulan] = useState([]);
   const [dokumen, setDokumen] = useState([]);
@@ -33,7 +37,9 @@ export default function UsulanPembangunanAdmin() {
         base44.entities.DokumenPembangunan.filter({ status: 'Aktif' }),
         base44.entities.APBDes.filter({ tahun_anggaran: 2026 }),
       ]);
-      setUsulan(u?.items || u); setDokumen(d?.items || d); setApbdes(a?.items || a);
+      setUsulan(normalizeUsulanData(u?.items || u));
+      setDokumen(normalizeUsulanData(d?.items || d));
+      setApbdes(normalizeUsulanData(a?.items || a));
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -41,8 +47,10 @@ export default function UsulanPembangunanAdmin() {
   useEffect(() => { loadData(); }, []);
 
   const filteredUsulan = usulan.filter(u => {
+    if (!u) return false;
     if (filters.search && !u.judul_usulan?.toLowerCase().includes(filters.search.toLowerCase()) && !u.pengusul?.toLowerCase().includes(filters.search.toLowerCase())) return false;
-    if (filters.status !== 'all' && u.status !== filters.status) return false;
+    const itemStatus = u?.status || u?.data?.status || 'Menunggu';
+    if (filters.status !== 'all' && itemStatus !== filters.status) return false;
     if (filters.kategori !== 'all' && u.kategori !== filters.kategori) return false;
     return true;
   });
@@ -53,11 +61,12 @@ export default function UsulanPembangunanAdmin() {
     setDialogOpen(false); setEditing(null); loadData();
   };
 
-  const handleEdit = (u) => { setEditing(u); setDialogOpen(true); };
-  const handleDetail = (u) => { setDetailItem(u); setDetailOpen(true); };
+  const handleEdit = (u) => { if (u) { setEditing(u); setDialogOpen(true); } };
+  const handleDetail = (u) => { if (u) { setDetailItem(u); setDetailOpen(true); } };
 
   const handleDelete = async (u) => {
-    if (!confirm(`Hapus usulan "${u.judul_usulan}"?`)) return;
+    if (!u) return;
+    if (!confirm(`Hapus usulan "${u.judul_usulan || 'usulan'}"?`)) return;
     await base44.entities.UsulanPembangunan.delete(u.id); loadData();
   };
 
@@ -65,7 +74,7 @@ export default function UsulanPembangunanAdmin() {
     await base44.entities.UsulanPembangunan.update(id, { status }); loadData();
   };
 
-  const totalAnggaranUsulan = usulan.filter(u => u.status !== 'Ditolak').reduce((s, u) => s + toNumber(u.estimasi_anggaran), 0);
+  const totalAnggaranUsulan = usulan.filter(u => u && (u?.status || u?.data?.status || 'Menunggu') !== 'Ditolak').reduce((s, u) => s + toNumber(u.estimasi_anggaran), 0);
   const apbdesItems = safeArray(apbdes);
   const totalBelanjaAPBDes = apbdesItems.filter(a => a.jenis === 'Belanja').reduce((s, a) => s + toNumber(a.anggaran), 0);
   const persentaseSelaras = totalBelanjaAPBDes > 0 ? Math.min(100, Math.round((totalAnggaranUsulan / totalBelanjaAPBDes) * 100)) : 0;
