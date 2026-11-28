@@ -18,8 +18,7 @@ const waktuLengkap = (iso) => {
 };
 
 export default function VerifikasiSuratHasil({ hasil }) {
-  const { valid, surat, desa } = hasil;
-  const institusi = [desa?.nama_desa, desa?.kecamatan, desa?.kabupaten, desa?.provinsi].filter(Boolean).join(', ');
+  const { valid, kode_verifikasi, nomor_surat, jenis_surat, nama_pemohon, nik_pemohon, tanggal_surat, status, pejabat_nama, pejabat_jabatan, tipe_ttd, pdf_file_uri } = hasil;
 
   if (!valid) {
     return (
@@ -49,23 +48,21 @@ export default function VerifikasiSuratHasil({ hasil }) {
       </div>
 
       <div className="px-5 py-4">
-        <Baris label="Nomor Surat" value={surat.nomor_surat} />
-        <Baris label="Jenis Surat" value={surat.jenis_surat} />
-        <Baris label="Keperluan" value={surat.keperluan} />
-        <Baris label="Tanggal Surat" value={surat.tanggal_surat ? formatTanggalPanjang(surat.tanggal_surat) : '-'} />
-        <Baris label="Pemohon" value={surat.nama_pemohon} />
+        <Baris label="Nomor Surat" value={nomor_surat} />
+        <Baris label="Jenis Surat" value={jenis_surat} />
+        <Baris label="Pemohon" value={nama_pemohon} />
+        <Baris label="NIK Pemohon" value={nik_pemohon} />
+        <Baris label="Tanggal Surat" value={tanggal_surat ? formatTanggalPanjang(tanggal_surat) : '-'} />
         <Baris
           label="Ditandatangani Oleh"
-          value={[surat.atas_nama ? 'a.n' : '', surat.pejabat_jabatan, surat.pejabat_nama].filter(Boolean).join(' — ')}
+          value={[pejabat_jabatan, pejabat_nama].filter(Boolean).join(' — ')}
         />
-        <Baris label="Waktu Tanda Tangan" value={waktuLengkap(surat.waktu_ttd)} />
-        <Baris label="Status Surat" value={surat.status} />
-        <Baris label="Kode Verifikasi" value={hasil.kode} />
-      </div>
-
-      <div className="bg-muted/50 px-5 py-3 flex items-start gap-2">
-        <Building2 className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-        <p className="text-xs text-muted-foreground">{institusi || 'Pemerintah Desa'} — diterbitkan melalui SIMDESTA.</p>
+        <Baris label="Waktu Tanda Tangan" value={waktuLengkap(tanggal_surat)} />
+        <Baris label="Status Surat" value={status} />
+        <Baris label="Kode Verifikasi" value={kode_verifikasi} />
+        {pdf_file_uri && (
+          <Baris label="Unduh PDF" value="Tersedia" />
+        )}
       </div>
     </div>
   );

@@ -45,20 +45,29 @@ export default function VerifikasiSurat() {
       
       const surat = transformRow(data);
       
-      // Build verification result
+      // Build verification result - include all fields needed by VerifikasiSuratHasil
       const verificationResult = {
         valid: true,
-        kode_verifikasi: surat.kode_verifikasi,
-        nomor_surat: surat.nomor_surat,
-        jenis_surat: surat.jenis_surat,
-        nama_pemohon: surat.nama_pemohon,
-        nik_pemohon: surat.nik_pemohon,
-        tanggal_surat: surat.tanggal_surat,
-        status: surat.status,
-        pejabat_nama: surat.pejabat_nama,
-        pejabat_jabatan: surat.pejabat_jabatan,
-        tipe_ttd: surat.tipe_ttd,
-        pdf_file_uri: surat.pdf_file_uri,
+        kode_verifikasi: surat.kode_verifikasi || bersih,
+        nomor_surat: surat.nomor_surat || '-',
+        jenis_surat: surat.jenis_surat || '-',
+        keperluan: surat.keperluan || '-',
+        tanggal_surat: surat.tanggal_surat || '-',
+        status: surat.status || '-',
+        nama_pemohon: surat.nama_pemohon || '-',
+        nik_pemohon: surat.nik_pemohon || '-',
+        atas_nama: surat.atas_nama || false,
+        pejabat_nama: surat.pejabat_nama || '-',
+        pejabat_jabatan: surat.pejabat_jabatan || '-',
+        tipe_ttd: surat.tipe_ttd || '-',
+        pdf_file_uri: surat.pdf_file_uri || '',
+        waktu_ttd: surat.waktu_ttd || surat.tanggal_surat || new Date().toISOString(),
+        profil: {
+          nama_desa: surat.nama_desa || 'Desa Tagog Apu',
+          kecamatan: surat.kecamatan || '',
+          kabupaten: surat.kabupaten || '',
+          provinsi: surat.provinsi || ''
+        }
       };
       
       setHasil(verificationResult);
