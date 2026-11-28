@@ -346,21 +346,22 @@ export default function Beranda() {
       </div>
 
       {/* Data Kependudukan */}
-      <section className="max-w-7xl mx-auto px-4 py-6">
-        <div className="mb-4">
+      <section className="w-full px-4 py-6" style={{ width: '100%', maxWidth: '100%', display: 'block' }}>
+        <div className="mb-4" style={{ width: '100%', maxWidth: '100%', display: 'block' }}>
           <span className="text-teal-600 text-xs font-bold uppercase tracking-wider bg-teal-50 px-3 py-1 rounded-full">STATISTIK DESA</span>
           <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 mt-2">Data Kependudukan Desa</h2>
           <p className="text-slate-600 text-sm">Demografi warga berdasarkan basis data kependudukan terkini</p>
         </div>
-        <div className="mb-6">
+        <div className="mb-6" style={{ width: '100%', maxWidth: '100%', display: 'block' }}>
           <PendudukStatsGrid stats={data.pendudukStats} />
         </div>
-        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-lg">Grafik Demografi</h3>
+        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm w-full" style={{ width: '100%', maxWidth: 'none', display: 'block' }}>
+          <div className="w-full" style={{ width: '100%', maxWidth: 'none', display: 'block' }}>
+            <h3 className="font-bold text-lg mb-4">Grafik Demografi</h3>
             <button
               onClick={() => setShowDetailDemografi(!showDetailDemografi)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/50 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/50 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors w-full"
+              style={{ width: '100%' }}
             >
               {showDetailDemografi ? (
                 <>
@@ -377,9 +378,7 @@ export default function Beranda() {
           </div>
           
           {showDetailDemografi && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <PendudukCharts stats={data.pendudukStats} />
-            </div>
+            <PendudukCharts stats={data.pendudukStats} />
           )}
         </div>
       </section>

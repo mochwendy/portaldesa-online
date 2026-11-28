@@ -173,8 +173,8 @@ export default function Dashboard() {
       </div>
 
       {/* Data Kependudukan */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4" style={{ width: '100%', maxWidth: '100%', display: 'block' }}>
+        <div className="flex items-center justify-between" style={{ width: '100%', maxWidth: '100%', display: 'block' }}>
           <div>
             <h2 className="text-xl font-extrabold">Data Kependudukan</h2>
             <p className="text-sm text-muted-foreground">Indikator demografi berbasis Data Kartu Keluarga desa</p>
@@ -183,8 +183,12 @@ export default function Dashboard() {
             Kelola <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
-        <PendudukStatsGrid stats={data.pendudukStats} />
-        <PendudukCharts stats={data.pendudukStats} />
+        <div style={{ width: '100%', maxWidth: '100%', display: 'block' }}>
+          <PendudukStatsGrid stats={data.pendudukStats} />
+        </div>
+        <div style={{ width: '100%', maxWidth: '100%', display: 'block' }}>
+          <PendudukCharts stats={data.pendudukStats} />
+        </div>
       </div>
 
       {/* Charts */}
