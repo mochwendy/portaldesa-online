@@ -115,6 +115,10 @@ export default function RealisasiPembangunanPublik() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {items.map((item) => {
               const progress = toNumber(item.persentase_progress);
+              // Support JSONB structure from supabaseAdapter: item.data?.foto_X_uri || item.foto_X_uri
+              const foto0 = item.data?.foto_0_uri || item.foto_0_uri;
+              const foto50 = item.data?.foto_50_uri || item.foto_50_uri;
+              const foto100 = item.data?.foto_100_uri || item.foto_100_uri;
               return (
                 <div key={item.id} className="bg-card rounded-xl border border-border overflow-hidden">
                   <div className="p-5">
@@ -157,9 +161,9 @@ export default function RealisasiPembangunanPublik() {
                   {/* Photos */}
                   <div className="px-5 pb-5">
                     <RealisasiPhotoGallery
-                      foto0={item.foto_0_uri}
-                      foto50={item.foto_50_uri}
-                      foto100={item.foto_100_uri}
+                      foto0={foto0}
+                      foto50={foto50}
+                      foto100={foto100}
                     />
                   </div>
                 </div>

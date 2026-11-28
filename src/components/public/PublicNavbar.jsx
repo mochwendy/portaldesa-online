@@ -64,7 +64,7 @@ export default function PublicNavbar() {
             </div>
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-1.5 overflow-x-auto py-2">
+          <nav className="hidden lg:flex items-center gap-1 overflow-x-auto py-2">
             {navItems.map((item) =>
               item.is_external ? (
                 <a
@@ -72,7 +72,7 @@ export default function PublicNavbar() {
                   href={item.to}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3.5 py-1.5 rounded-full text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                  className="px-2.5 py-1.5 rounded-full text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors whitespace-nowrap"
                 >
                   {item.label}
                 </a>
@@ -82,7 +82,7 @@ export default function PublicNavbar() {
                   to={item.to}
                   end={item.end}
                   className={({ isActive }) =>
-                    `px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                    `px-2.5 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
                       isActive
                         ? 'bg-teal-600 text-white shadow-sm shadow-teal-600/30'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
