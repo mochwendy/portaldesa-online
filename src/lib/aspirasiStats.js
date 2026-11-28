@@ -1,4 +1,4 @@
-import { base44 } from '@/api/base44Client';
+import { createSupabaseEntity } from '@/api/supabaseAdapter.js';
 import { loadLocalData } from './localData';
 
 let statsCache = null;
@@ -50,24 +50,33 @@ export async function fetchAspirasiStats({ force = false } = {}) {
   }
 
   try {
-    const response = await base44.functions.invoke('getAspirasiStats', {});
-    const raw = response?.data || {};
+    const aspirasiEntity = createSupabaseEntity('Aspirasi');
+    const { items: rows, total } = await aspirasiEntity.list('-created_date', 10000);
+    
+    const countByStatus = {};
+    const countByKategori = {};
+    rows.forEach((r) => {
+      const s = r.status || 'Tidak Diketahui';
+      countByStatus[s] = (countByStatus[s] || 0) + 1;
+      const k = r.kategori || 'Tidak Diketahui';
+      countByKategori[k] = (countByKategori[k] || 0) + 1;
+    });
     
     const stats = {
-      total: raw.total || 0,
-      status: raw.status || {},
-      baru: raw.baru || 0,
-      diproses: raw.diproses || 0,
-      selesai: raw.selesai || 0,
-      ditolak: raw.ditolak || 0,
-      kategori: raw.kategori || {},
+      total,
+      status: countByStatus,
+      baru: countByStatus['Baru'] || 0,
+      diproses: (countByStatus['Diproses'] || 0) + (countByStatus['Dijawab'] || 0),
+      selesai: countByStatus['Selesai'] || 0,
+      ditolak: countByStatus['Ditolak'] || 0,
+      kategori: countByKategori,
     };
     
     statsCache = stats;
     statsCacheAt = Date.now();
     return stats;
   } catch (e) {
-    console.warn('API fetchAspirasiStats failed', e);
+    console.warn('Supabase fetchAspirasiStats failed', e);
   }
 
   // Final fallback

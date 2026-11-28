@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom';
 import { base44, fetchEntitiesLocal, fetchFunctionLocal, toNumber } from '@/api/base44Client';
 import {
   Users, Store, Wallet, ArrowRight,
-  MapPin, MessagesSquare, ShoppingBag, ClipboardList
+  MapPin, MessagesSquare, ShoppingBag, ClipboardList,
+  ChevronUp, ChevronDown
 } from 'lucide-react';
 import BerandaRealisasi from '@/components/public/BerandaRealisasi';
 import BerandaUmkm from '@/components/public/BerandaUmkm';
@@ -36,6 +37,7 @@ export default function Beranda() {
     realisasi: [] 
   });
   const [loading, setLoading] = useState(true);
+  const [showDetailDemografi, setShowDetailDemografi] = useState(false);
   const { settings } = useWebsiteSettings();
 
   useEffect(() => {
@@ -188,14 +190,14 @@ export default function Beranda() {
             safe(() => base44.entities.ProfilDesa.list({ sort: '-created_date', limit: 1 }), []),
             safe(() => base44.functions.invoke('getAspirasiStats').then((res) => res.data), null),
             safe(() => base44.functions.invoke('getSuratStats').then((res) => res.data), null),
-            safe(() => fetchFunctionLocal('getPendudukStats'), null),
+            safe(() => base44.functions.invoke('getPendudukStats').then((res) => res.data), null),
             safe(() => base44.entities.UMKM.filter({ status: 'Aktif' }), []),
             safe(() => base44.entities.APBDes.filter({ tahun_anggaran: 2026 }), []),
             safe(() => base44.entities.RealisasiPembangunan.list({ sort: '-created_date', limit: 50 }), []),
           ]);
 
           const profilData = safeArray(listOf(profil))[0] || await safe(() => fetchEntitiesLocal('ProfilDesa'), null);
-          const umkmData = safeArray(listOf(umkm)).length > 0 ? safeArray(umkm) : await safe(() => fetchEntitiesLocal('UMKM'), []);
+          const umkmData = safeArray(listOf(umkm)).length > 0 ? safeArray(listOf(umkm)) : await safe(() => fetchEntitiesLocal('UMKM'), []);
           const apbdesFromAPI = safeArray(listOf(apbdes));
           const apbdesData = apbdesFromAPI.length > 0 ? apbdesFromAPI : safeArray(await safe(() => fetchEntitiesLocal('APBDes'), []));
           const realisasiFromAPI = safeArray(listOf(realisasi));
@@ -354,7 +356,31 @@ export default function Beranda() {
           <PendudukStatsGrid stats={data.pendudukStats} />
         </div>
         <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
-          <PendudukCharts stats={data.pendudukStats} />
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-lg">Grafik Demografi</h3>
+            <button
+              onClick={() => setShowDetailDemografi(!showDetailDemografi)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/50 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              {showDetailDemografi ? (
+                <>
+                  <ChevronUp className="w-4 h-4" />
+                  Sembunyikan Detail Grafik
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4" />
+                  Lihat Detail Grafik Demografi
+                </>
+              )}
+            </button>
+          </div>
+          
+          {showDetailDemografi && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <PendudukCharts stats={data.pendudukStats} />
+            </div>
+          )}
         </div>
       </section>
 

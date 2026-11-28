@@ -34,7 +34,7 @@ export default function PerangkatDesaAdmin() {
     setLoading(true);
     try {
       const data = await base44.entities.PerangkatDesa.list('urutan', 100);
-      setRecords(data);
+      setRecords(data?.items || data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };

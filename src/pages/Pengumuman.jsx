@@ -46,7 +46,7 @@ export default function Pengumuman() {
     setLoading(true);
     try {
       const data = await base44.entities.Pengumuman.list('-tanggal_publikasi', 200);
-      setRecords(data);
+      setRecords(data?.items || data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };

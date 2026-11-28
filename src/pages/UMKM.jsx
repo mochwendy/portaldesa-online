@@ -48,7 +48,7 @@ export default function UMKM() {
     setLoading(true);
     try {
       const data = await base44.entities.UMKM.list('-created_date', 200);
-      setRecords(data);
+      setRecords(data?.items || data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };

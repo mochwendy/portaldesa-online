@@ -9,7 +9,8 @@ const ProfilDesaPublik = () => {
     (async () => {
       try {
         const rows = await base44.entities.ProfilDesa.list();
-        setData(rows[0] || {});
+        const data = (rows?.items || rows);
+        setData(data[0] || {});
       } catch (e) {
         console.error(e);
       } finally {

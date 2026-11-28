@@ -27,7 +27,7 @@ export default function MarketplaceUMKM() {
     (async () => {
       try {
         const data = await base44.entities.UMKM.filter({ status: 'Aktif' }, '-created_date', 200);
-        setRecords(data);
+        setRecords(data?.items || data);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
     })();

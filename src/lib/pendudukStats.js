@@ -1,4 +1,4 @@
-import { base44 } from '@/api/base44Client';
+import { createSupabaseEntity } from '@/api/supabaseAdapter.js';
 import { loadLocalData } from './localData';
 
 // Indikator kependudukan dihitung di server lewat fungsi publik, sehingga portal tetap tampil
@@ -117,56 +117,49 @@ export async function fetchPendudukStats({ force = false } = {}) {
     return stats;
   }
 
-  // Try API first (produksi)
+  // Try Supabase first (produksi)
   try {
-    const response = await base44.functions.invoke('getPendudukStats', {});
-    const raw = response?.data || {};
-
-    const total = raw.total || 0;
-    const disabilitas = raw.disabilitas || 0;
-    const kk = raw.kk || 0;
-
-    // Gender from API
-    const genderPairs = [];
-    if (raw.gender && Array.isArray(raw.gender)) {
-      genderPairs.push(...raw.gender.filter((r) => r.jenis_kelamin && String(r.jenis_kelamin).trim()));
-    }
-
-    // USIA from API
-    const usiaPairs = [];
-    if (raw.usia && Array.isArray(raw.usia)) {
-      usiaPairs.push(...raw.usia.filter((r) => r.kelompok_usia && String(r.kelompok_usia).trim()));
-    }
-
-    const lakiLaki = genderPairs.find((r) => String(r.jenis_kelamin || '').toLowerCase() === 'laki-laki')?.count || 0;
-    const perempuan = genderPairs.find((r) => String(r.jenis_kelamin || '').toLowerCase() === 'perempuan')?.count || 0;
-
-    const usiaProduktif = usiaPairs
-      .filter((row) => ['15-24 Tahun', '25-44 Tahun', '45-64 Tahun'].includes(row.kelompok_usia || ''))
-      .reduce((sum, row) => sum + (row.count || 0), 0);
+    const pendudukEntity = createSupabaseEntity('Penduduk');
+    const { items: rows, total: rowCount } = await pendudukEntity.list('-created_date', 10000);
+    
+    const total = rows.length;
+    const lakiLaki = rows.filter((r) => (r.jenis_kelamin || '').toLowerCase() === 'laki-laki').length;
+    const perempuan = rows.filter((r) => (r.jenis_kelamin || '').toLowerCase() === 'perempuan').length;
+    const mkRows = new Set(rows.map((r) => r.no_kk).filter((k) => k));
+    const totalKK = mkRows.size;
+    
+    // Usia produktif (15-64) dari kolom kelompok_usia
+    let usiaProduktif = 0;
+    rows.forEach((r) => {
+      const k = (r.kelompok_usia || '');
+      const m = k.match(/(\d+)/);
+      if (m && Number(m[1]) >= 15 && Number(m[1]) <= 64) usiaProduktif++;
+    });
+    
+    const disabilitas = rows.filter((r) => (r.disabilitas || '') !== '').length;
 
     const stats = {
       total,
-      totalKK: kk || 0,
+      totalKK: totalKK || 0,
       disabilitas,
       lakiLaki,
       perempuan,
       usiaProduktif,
-      gender: genderPairs,
-      usia: usiaPairs,
-      pendidikan: toPairs(raw.pendidikan, 'pendidikan'),
-      pekerjaan: toPairs(raw.pekerjaan, 'pekerjaan').slice(0, 10),
-      perkawinan: toPairs(raw.perkawinan, 'status_perkawinan'),
-      keluarga: toPairs(raw.keluarga, 'status_keluarga'),
-      agama: toPairs(raw.agama, 'agama'),
-      wilayah: normalizeWilayah(raw.wilayah || []),
+      gender: countToPairs(rows, 'jenis_kelamin'),
+      usia: countToPairs(rows, 'kelompok_usia'),
+      pendidikan: countToPairs(rows, 'pendidikan'),
+      pekerjaan: countToPairs(rows, 'pekerjaan').slice(0, 10),
+      perkawinan: countToPairs(rows, 'status_perkawinan'),
+      keluarga: countToPairs(rows, 'status_keluarga'),
+      agama: countToPairs(rows, 'agama'),
+      wilayah: normalizeWilayah(rows),
     };
-
+    
     statsCache = stats;
     statsCacheAt = Date.now();
     return stats;
   } catch (e) {
-    console.warn('API fetchPendudukStats failed, falling back to summary JSON', e);
+    console.warn('Supabase fetchPendudukStats failed, falling back to summary JSON', e);
   }
 
   // Fallback to summary JSON if available
@@ -265,7 +258,8 @@ export async function fetchAllPenduduk() {
 
 export async function fetchFilteredPenduduk(query = {}) {
   try {
-    const result = await base44.entities.Penduduk.filter(query, {
+    const pendudukEntity = createSupabaseEntity('Penduduk');
+    const result = await pendudukEntity.filter(query, {
       sort: 'nama_lengkap',
       limit: 10000,
     });

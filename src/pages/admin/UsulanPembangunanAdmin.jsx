@@ -33,7 +33,7 @@ export default function UsulanPembangunanAdmin() {
         base44.entities.DokumenPembangunan.filter({ status: 'Aktif' }),
         base44.entities.APBDes.filter({ tahun_anggaran: 2026 }),
       ]);
-      setUsulan(u); setDokumen(d); setApbdes(a);
+      setUsulan(u?.items || u); setDokumen(d?.items || d); setApbdes(a?.items || a);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };

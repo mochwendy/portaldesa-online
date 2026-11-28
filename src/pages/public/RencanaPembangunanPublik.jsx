@@ -26,7 +26,7 @@ export default function RencanaPembangunanPublik() {
           base44.entities.UsulanPembangunan.list('-tanggal_usulan', 500),
           base44.entities.DokumenPembangunan.filter({ status: 'Aktif' }),
         ]);
-        setUsulan(u); setDokumen(d);
+        setUsulan(u?.items || u); setDokumen(d?.items || d);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
     })();

@@ -27,7 +27,8 @@ export default function LayananSurat() {
   const load = async () => {
     setLoading(true);
     try {
-      setRecords(await base44.entities.SuratKeterangan.list('-created_date', 200));
+      const data = await base44.entities.SuratKeterangan.list('-created_date', 200);
+      setRecords(data?.items || data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };

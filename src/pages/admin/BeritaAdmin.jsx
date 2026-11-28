@@ -35,7 +35,7 @@ export default function BeritaAdmin() {
     setLoading(true);
     try {
       const data = await base44.entities.Berita.list('-tanggal_publikasi', 200);
-      setRecords(data);
+      setRecords(data?.items || data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };

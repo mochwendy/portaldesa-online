@@ -1,4 +1,4 @@
-import { base44 } from '@/api/base44Client';
+import { createSupabaseEntity } from '@/api/supabaseAdapter.js';
 import { loadLocalData } from './localData';
 
 let statsCache = null;
@@ -34,23 +34,29 @@ export async function fetchSuratStats({ force = false } = {}) {
   }
 
   try {
-    const response = await base44.functions.invoke('getSuratStats', {});
-    const raw = response?.data || {};
+    const suratEntity = createSupabaseEntity('SuratKeterangan');
+    const { items: rows, total } = await suratEntity.list('-created_date', 10000);
+    
+    const countByStatus = {};
+    rows.forEach((r) => {
+      const s = r.status || 'Tidak Diketahui';
+      countByStatus[s] = (countByStatus[s] || 0) + 1;
+    });
     
     const stats = {
-      total: raw.total || 0,
-      status: raw.status || {},
-      diajukan: raw.diajukan || 0,
-      diproses: raw.diproses || 0,
-      selesai: raw.selesai || 0,
-      ditolak: raw.ditolak || 0,
+      total,
+      status: countByStatus,
+      diajukan: countByStatus['Diajukan'] || 0,
+      diproses: (countByStatus['Diproses'] || 0) + (countByStatus['Disetujui'] || 0),
+      selesai: countByStatus['Selesai'] || 0,
+      ditolak: countByStatus['Ditolak'] || 0,
     };
     
     statsCache = stats;
     statsCacheAt = Date.now();
     return stats;
   } catch (e) {
-    console.warn('API fetchSuratStats failed', e);
+    console.warn('Supabase fetchSuratStats failed', e);
   }
 
   // Final fallback

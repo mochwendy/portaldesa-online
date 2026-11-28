@@ -19,7 +19,7 @@ export default function BeritaPublik() {
     (async () => {
       try {
         const data = await base44.entities.Berita.filter({ status: 'Dipublikasi' }, '-tanggal_publikasi', 100);
-        setRecords(data);
+        setRecords(data?.items || data);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
     })();

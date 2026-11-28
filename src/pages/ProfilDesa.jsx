@@ -30,8 +30,9 @@ export default function ProfilDesa() {
     setLoading(true);
     try {
       const data = await base44.entities.ProfilDesa.list('-created_date', 1);
-      if (data.length > 0) {
-        setProfil(data[0]);
+      const items = data?.items || data;
+      if (items.length > 0) {
+        setProfil(items[0]);
       } else {
         setProfil(null);
       }
