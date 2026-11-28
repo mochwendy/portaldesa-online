@@ -7,6 +7,28 @@ const pad2 = (n) => String(n).padStart(2, '0');
 
 const includesAny = (value, list) => list.some((k) => value.includes(k));
 
+// Validasi format NIK/No.KK: 16 digit angka
+export function validateNikFormat(nik) {
+  return /^\d{16}$/.test(String(nik || '').replace(/\s/g, ''));
+}
+
+// Normalisasi nomor WhatsApp/HP
+export function normalizeNoWa(value) {
+  const cleaned = String(value || '').replace(/[\s\-\(\)]/g, '');
+  if (!cleaned) return '';
+  // Jika diawali 0, ubah ke 62; jika sudah 62 biarkan; jika +62 hapus +
+  if (cleaned.startsWith('0')) return '62' + cleaned.slice(1);
+  if (cleaned.startsWith('62')) return cleaned;
+  if (cleaned.startsWith('+62')) return cleaned.slice(1);
+  return cleaned;
+}
+
+export function validateNoWaFormat(noWa) {
+  const normalized = normalizeNoWa(noWa);
+  // Format: 628xxxxxxxxxx (min 10 digit setelah 62, max 13)
+  return /^62\d{9,12}$/.test(normalized);
+}
+
 export const PENDIDIKAN_OPTIONS = [
   'Tidak/Belum Sekolah', 'Belum Tamat SD', 'SD', 'SMP', 'SMA/SMK', 'Diploma', 'S1', 'S2/S3', 'Lainnya',
 ];
@@ -109,6 +131,7 @@ export function hitungKelompokUsia(tanggalLahir) {
 // [0] NO, [1] NAMA, [2] NO KK, [3] NIK, [4] JENIS KELAMIN, [5] TEMPAT LAHIR,
 // [6-8] TGL/BLN/THN, [9] AGAMA, [10] PENDIDIKAN, [11] PEKERJAAN, [12] PERKAWINAN,
 // [13] KELUARGA, [14] RUMAH, [15] DISABILITAS, [16] LISTRIK, [17] ALAMAT, [18] RT, [19] RW
+// [20] NO WA/HP (opsional)
 export function normalizePendudukRow(row, fallbackRw = '') {
   if (!row) return null;
   const nama = text(row[1]);
@@ -116,6 +139,7 @@ export function normalizePendudukRow(row, fallbackRw = '') {
   if (!nama || !nik) return null;
   const tanggalLahir = toDateString(row[6], row[7], row[8]);
   const rw = normalizeRw(row[19], fallbackRw);
+  const noWa = normalizeNoWa(row[20]);
   return {
     nik,
     no_kk: text(row[2]).replace(/\s/g, ''),
@@ -135,31 +159,109 @@ export function normalizePendudukRow(row, fallbackRw = '') {
     alamat: text(row[17]),
     rt: text(row[18]),
     rw,
+    no_wa: noWa,
     status_kependudukan: 'Aktif',
     sumber_data: 'Data KK Desa Tagog Apu',
   };
+}
+
+// Validasi baris penduduk untuk impor
+export function validatePendudukRow(row) {
+  const errors = [];
+  const warnings = [];
+  
+  if (!row.nama_lengkap) {
+    errors.push('Nama lengkap wajib diisi');
+  }
+  
+  if (!row.nik) {
+    errors.push('NIK wajib diisi');
+  } else if (!validateNikFormat(row.nik)) {
+    errors.push(`NIK harus 16 digit angka (ditemukan: ${row.nik})`);
+  }
+  
+  if (row.no_kk && !validateNikFormat(row.no_kk)) {
+    warnings.push(`No. KK harus 16 digit angka (ditemukan: ${row.no_kk})`);
+  }
+  
+  if (row.no_wa && !validateNoWaFormat(row.no_wa)) {
+    warnings.push(`Format No. WA tidak valid (ditemukan: ${row.no_wa})`);
+  }
+  
+  if (!row.tanggal_lahir) {
+    warnings.push('Tanggal lahir kosong - kelompok usia tidak bisa dihitung');
+  }
+  
+  return { errors, warnings, isValid: errors.length === 0 };
 }
 
 export async function parsePendudukFile(file) {
   const buffer = await file.arrayBuffer();
   const wb = XLSX.read(buffer, { type: 'array' });
   const rows = [];
+  const validationResults = [];
   wb.SheetNames.forEach((name) => {
     const sheetRows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: null });
     const rwMatch = name.match(/RW\s*(\d{1,3})/i);
     const fallbackRw = rwMatch ? rwMatch[1].padStart(3, '0') : '';
     for (let i = 3; i < sheetRows.length; i += 1) {
       const normalized = normalizePendudukRow(sheetRows[i], fallbackRw);
-      if (normalized) rows.push(normalized);
+      if (normalized) {
+        const validation = validatePendudukRow(normalized);
+        rows.push(normalized);
+        validationResults.push({ row: normalized, ...validation });
+      }
     }
   });
 
   const seen = new Set();
-  return rows.filter((row) => {
-    if (seen.has(row.nik)) return false;
+  const dedupedRows = [];
+  const dedupedValidation = [];
+  rows.forEach((row, idx) => {
+    if (seen.has(row.nik)) return;
     seen.add(row.nik);
-    return true;
+    dedupedRows.push(row);
+    dedupedValidation.push(validationResults[idx]);
   });
+
+  return { rows: dedupedRows, validation: dedupedValidation };
+}
+
+// Upsert penduduk berdasarkan NIK (insert atau update)
+export async function upsertPendudukBatch(rows) {
+  const BATCH_SIZE = 250;
+  let inserted = 0;
+  let updated = 0;
+  let errors = 0;
+  const errorDetails = [];
+
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = rows.slice(i, i + BATCH_SIZE);
+    for (const row of batch) {
+      try {
+        // Cek apakah NIK sudah ada
+        const existing = await base44.entities.Penduduk.filter(
+          { nik: { $regex: `^${row.nik}$` } },
+          { limit: 1 }
+        );
+        
+        if (existing.items && existing.items.length > 0) {
+          // Update existing
+          await base44.entities.Penduduk.update(existing.items[0].id, row);
+          updated++;
+        } else {
+          // Insert new
+          await base44.entities.Penduduk.create(row);
+          inserted++;
+        }
+      } catch (e) {
+        errors++;
+        errorDetails.push({ nik: row.nik, nama: row.nama_lengkap, error: e.message });
+      }
+    }
+  }
+
+  return { inserted, updated, errors, errorDetails };
 }
 
 // Mengambil seluruh NIK yang sudah tersimpan (per halaman) agar impor tidak membuat duplikat.
@@ -180,11 +282,11 @@ export async function fetchExistingNik() {
 
 const EXPORT_HEADER_1 = [
   'NO', 'NAMA', 'NO KK', 'NIK', 'JENIS KELAMIN', 'TEMPAT LAHIR', 'LAHIR', null, null,
-  'AGAMA', 'STATUS', null, null, null, null, 'DISABILITAS', 'LISTRIK', 'ALAMAT', null, null,
+  'AGAMA', 'STATUS', null, null, null, null, 'DISABILITAS', 'LISTRIK', 'ALAMAT', 'NO WA', 'RT', 'RW',
 ];
 const EXPORT_HEADER_2 = [
   null, null, null, null, null, null, 'TGL', 'BLN', 'THN', null,
-  'PENDIDIKAN', 'PEKERJAAN', 'PERKAWINAN', 'KELUARGA', 'RUMAH', null, null, 'KAMPUNG', 'RT', 'RW',
+  'PENDIDIKAN', 'PEKERJAAN', 'PERKAWINAN', 'KELUARGA', 'RUMAH', null, null, 'KAMPUNG', null, null, null,
 ];
 
 export function buildPendudukWorkbook(records) {
@@ -204,11 +306,27 @@ export function buildPendudukWorkbook(records) {
     list.forEach((r, index) => {
       const [thn, bln, tgl] = r.tanggal_lahir ? r.tanggal_lahir.split('-') : ['', '', ''];
       aoa.push([
-        index + 1, r.nama_lengkap || '', r.no_kk || '', r.nik || '', (r.jenis_kelamin || '').toUpperCase(),
-        r.tempat_lahir || '', tgl || '', bln || '', thn || '', (r.agama || '').toUpperCase(),
-        r.pendidikan || '', r.pekerjaan || '', (r.status_perkawinan || '').toUpperCase(),
-        (r.status_keluarga || '').toUpperCase(), r.status_rumah || '', r.disabilitas || '',
-        r.listrik || '', r.alamat || '', r.rt || '', r.rw || '',
+        index + 1, 
+        r.nama_lengkap || '', 
+        r.no_kk || '', 
+        r.nik || '', 
+        (r.jenis_kelamin || '').toUpperCase(),
+        r.tempat_lahir || '', 
+        tgl || '', 
+        bln || '', 
+        thn || '', 
+        (r.agama || '').toUpperCase(),
+        r.pendidikan || '', 
+        r.pekerjaan || '', 
+        (r.status_perkawinan || '').toUpperCase(),
+        (r.status_keluarga || '').toUpperCase(), 
+        r.status_rumah || '', 
+        r.disabilitas || '',
+        r.listrik || '', 
+        r.alamat || '', 
+        r.no_wa || '', 
+        r.rt || '', 
+        r.rw || '',
       ]);
     });
     const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -216,7 +334,7 @@ export function buildPendudukWorkbook(records) {
       { wch: 5 }, { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 16 },
       { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 10 }, { wch: 24 }, { wch: 26 },
       { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 24 },
-      { wch: 6 }, { wch: 6 },
+      { wch: 16 }, { wch: 6 }, { wch: 6 },
     ];
     const sheetName = key.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || 'DATA';
     XLSX.utils.book_append_sheet(wb, ws, sheetName);

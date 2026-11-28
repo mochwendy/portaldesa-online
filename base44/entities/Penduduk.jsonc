@@ -187,6 +187,11 @@
         "type": "string",
         "title": "RW"
       },
+      "no_wa": {
+        "type": "string",
+        "title": "No. WhatsApp / HP",
+        "description": "Nomor WhatsApp/HP warga (opsional), format: 628xxxxxxxxxx"
+      },
       "status_kependudukan": {
         "type": "string",
         "enum": [

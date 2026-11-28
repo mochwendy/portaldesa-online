@@ -34,6 +34,7 @@ export default function PendudukDetailDialog({ open, onOpenChange, penduduk, onE
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Nomor Kartu Keluarga" value={p.no_kk} />
+          <Field label="No. WhatsApp / HP" value={p.no_wa} />
           <Field label="Status Hubungan Keluarga" value={p.status_keluarga} />
           <Field label="Jenis Kelamin" value={p.jenis_kelamin} />
           <Field label="Kelompok Usia" value={p.kelompok_usia} />

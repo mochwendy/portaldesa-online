@@ -10,7 +10,7 @@ import PendudukStatsGrid from '@/components/penduduk/PendudukStatsGrid';
 import PendudukFormDialog from '@/components/penduduk/PendudukFormDialog';
 import PendudukImportDialog from '@/components/penduduk/PendudukImportDialog';
 import PendudukDetailDialog from '@/components/penduduk/PendudukDetailDialog';
-import { fetchPendudukStats, fetchAllPenduduk, fetchRwOptions } from '@/lib/pendudukStats';
+import { fetchPendudukStats, fetchAllPenduduk, fetchFilteredPenduduk, fetchRwOptions } from '@/lib/pendudukStats';
 import { downloadPendudukExcel } from '@/lib/pendudukExcel';
 
 const PAGE_SIZE = 25;
@@ -101,7 +101,8 @@ export default function Penduduk() {
   const exportAll = async () => {
     setExporting(true);
     try {
-      const records = await fetchAllPenduduk();
+      const query = buildQuery();
+      const records = await fetchFilteredPenduduk(query);
       if (records.length === 0) return;
       downloadPendudukExcel(records);
     } finally {

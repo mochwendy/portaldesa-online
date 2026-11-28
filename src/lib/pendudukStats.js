@@ -263,6 +263,19 @@ export async function fetchAllPenduduk() {
   return loadLocalData('Penduduk');
 }
 
+export async function fetchFilteredPenduduk(query = {}) {
+  try {
+    const result = await base44.entities.Penduduk.filter(query, {
+      sort: 'nama_lengkap',
+      limit: 10000,
+    });
+    return result.items || [];
+  } catch (e) {
+    console.error('fetchFilteredPenduduk error:', e);
+    return loadLocalData('Penduduk');
+  }
+}
+
 export function fetchRwOptions() {
   return loadLocalData('Penduduk').then(rows => {
     return [...new Set(rows.map(r => r.rw).filter(Boolean))].sort();
